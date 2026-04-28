@@ -5,7 +5,11 @@
 
     let { onOpenBookingDict } = $props<{ onOpenBookingDict?: () => void }>();
 
-    const currentMonthDisplay = $derived(`WOCHE VOM ${calendarStore.currentWeekStart.toLocaleDateString('de-DE')}`);
+    const weekRange = $derived.by(() => {
+        const s = calendarStore.currentWeekStart;
+        const e = new Date(s.getTime() + 6 * 86400000);
+        return `${s.getDate()}.${s.getMonth() + 1}. – ${e.getDate()}.${e.getMonth() + 1}.${e.getFullYear()}`;
+    });
     const checkInTime = $derived(calendarStore.checkIn
         ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         : null);
@@ -46,40 +50,36 @@
     }
 </script>
 
-<header class="flex flex-wrap justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 gap-4">
+<header class="flex flex-wrap justify-between items-center mb-4 p-4 rounded-2xl shadow-sm gap-4" style="background: var(--bg-card); border-color: var(--border-main)">
     <div class="flex items-center gap-6">
-        <div>
-            <h1 class="text-xl font-black text-indigo-600 tracking-tighter uppercase">Time-Note</h1>
-            <p class="text-xs text-slate-400 font-bold">{currentMonthDisplay}</p>
-        </div>
-        <label class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200">
+        <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer" style="background: var(--bg-page); border: 1px solid var(--border-main)">
             <input 
                 type="checkbox" 
                 bind:checked={calendarStore.hideOOO} 
                 onchange={() => calendarStore.save()}
-                class="w-4 h-4 text-indigo-600 rounded"
+                class="w-4 h-4 rounded" style="accent-color: var(--text-indigo)"
             >
-            <span class="text-xs font-bold text-slate-600">OOO ausblenden</span>
+            <span class="text-xs font-bold" style="color: var(--text-secondary)">OOO ausblenden</span>
         </label>
-        <label class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200">
+        <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer" style="background: var(--bg-page); border: 1px solid var(--border-main)">
             <input 
                 type="checkbox" 
                 bind:checked={calendarStore.hideWeekends} 
                 onchange={() => calendarStore.save()}
-                class="w-4 h-4 text-indigo-600 rounded"
+                class="w-4 h-4 rounded" style="accent-color: var(--text-indigo)"
             >
-            <span class="text-xs font-bold text-slate-600">Wochenende ausblenden</span>
+            <span class="text-xs font-bold" style="color: var(--text-secondary)">Wochenende ausblenden</span>
         </label>
     </div>
     
-    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-        <button onclick={() => calendarStore.changeWeek(-1)} class="p-2 hover:bg-white rounded-lg transition">
+    <div class="flex items-center gap-1 p-1 rounded-xl" style="background: var(--nav-bg)">
+        <button onclick={() => calendarStore.changeWeek(-1)} class="p-2 rounded-lg transition" style="color: var(--nav-text)" onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--nav-hover)'} onmouseleave={(e) => (e.target as HTMLElement).style.background = 'transparent'} title="Vorherige Woche">
             <ChevronLeft size={16} />
         </button>
-        <button onclick={() => calendarStore.goToToday()} class="px-4 py-2 hover:bg-white rounded-lg font-bold text-xs transition uppercase">
-            Heute
+        <button onclick={() => calendarStore.goToToday()} class="px-4 py-2 rounded-lg font-bold text-xs transition" style="color: var(--nav-text); background: transparent" onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--nav-hover)'} onmouseleave={(e) => (e.target as HTMLElement).style.background = 'transparent'} title="Aktuelle Woche">
+            {weekRange}
         </button>
-        <button onclick={() => calendarStore.changeWeek(1)} class="p-2 hover:bg-white rounded-lg transition">
+        <button onclick={() => calendarStore.changeWeek(1)} class="p-2 rounded-lg transition" style="color: var(--nav-text)" onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--nav-hover)'} onmouseleave={(e) => (e.target as HTMLElement).style.background = 'transparent'} title="Nächste Woche">
             <ChevronRight size={16} />
         </button>
     </div>
@@ -87,12 +87,14 @@
     <div class="flex items-center gap-2">
         {#if calendarStore.checkIn}
             <button onclick={() => calendarStore.checkOutNow()}
-                class="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition text-xs font-bold border border-red-200">
+                class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
+                style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border)">
                 <Square size={14} /> Auschecken {checkInTime}
             </button>
         {:else}
             <button onclick={() => calendarStore.checkInNow()}
-                class="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition text-xs font-bold border border-emerald-200">
+                class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
+                style="background: var(--btn-checkin-bg); color: var(--btn-checkin-text); border-color: var(--btn-checkin-border)">
                 <Play size={14} /> Einchecken
             </button>
         {/if}

@@ -31,30 +31,31 @@
 
 <div class="space-y-4">
     <div class="grid grid-cols-2 gap-2 mb-4">
-        <input type="time" bind:value={localData.start} class="bg-slate-50 border p-2 rounded-xl text-sm">
-        <input type="time" bind:value={localData.end} class="bg-slate-50 border p-2 rounded-xl text-sm">
-        <input type="text" bind:value={localData.subject} placeholder="Titel" class="col-span-2 bg-slate-50 border p-2 rounded-xl text-sm font-bold">
+        <input type="time" bind:value={localData.start} class="p-2 rounded-xl text-sm" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+        <input type="time" bind:value={localData.end} class="p-2 rounded-xl text-sm" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+        <input type="text" bind:value={localData.subject} placeholder="Titel" class="col-span-2 p-2 rounded-xl text-sm font-bold" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
     </div>
 
     <div>
-        <label for="bookingInput" class="block text-[10px] font-black text-slate-400 uppercase mb-1">Buchungsnummer (ZNR)</label>
+        <label for="bookingInput" class="block text-[10px] font-black uppercase mb-1" style="color: var(--text-muted)">Buchungsnummer (ZNR)</label>
         <input 
             type="text" 
             id="bookingInput"
             bind:value={localData.booking} 
-            class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 outline-none focus:border-indigo-500 font-mono" 
+            class="w-full rounded-xl p-3 font-mono outline-none"
+            style="background: var(--input-bg); border: 2px solid var(--input-border); color: var(--input-text)"
             placeholder="P00000"
         >
     </div>
 
     {#if onDelete}
-        <button onclick={onDelete} class="w-full text-red-500 text-xs font-bold py-2 border border-red-100 rounded-xl hover:bg-red-50 transition-colors">
+        <button onclick={onDelete} class="w-full text-xs font-bold py-2 rounded-xl transition-colors" style="color: var(--btn-checkout-text); border: 1px solid var(--btn-checkout-border); background: var(--btn-checkout-bg)">
             Meeting löschen
         </button>
     {/if}
 
     <div class="flex gap-2 mt-6">
-        <button onclick={() => onSave(localData)} class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors">
+        <button onclick={() => onSave(localData)} class="flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-colors" style="background: var(--text-indigo); color: white">
             Speichern
         </button>
     </div>

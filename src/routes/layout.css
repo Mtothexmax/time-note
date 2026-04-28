@@ -4,7 +4,120 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+:root {
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-header: #f8fafc;
+  --bg-today: #eef2ff;
+  --bg-grid-cell: transparent;
+  --bg-scroll: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-indigo: #4f46e5;
+  --text-indigo-light: #6366f1;
+  --border-main: #e2e8f0;
+  --border-light: #f1f5f9;
+  --border-indigo: #6366f1;
+  --grid-line: #e2e8f0;
+  --grid-line-light: #f1f5f9;
+  --ghost-border: #a5b4fc;
+  --ghost-bg: rgba(99,102,241,0.06);
+  --ghost-bg-hover: rgba(99,102,241,0.12);
+  --card-csv-bg: rgba(16,185,129,0.12);
+  --card-csv-border: #059669;
+  --card-csv-text: #047857;
+  --card-manual-bg: rgba(20,184,166,0.12);
+  --card-manual-border: #0d9488;
+  --card-manual-text: #115e59;
+  --card-booked-bg: rgba(14,165,233,0.12);
+  --card-booked-border: #0284c7;
+  --card-booked-text: #075985;
+  --card-work-bg: rgba(99,102,241,0.10);
+  --card-work-border: #4f46e5;
+  --card-work-text: #3730a3;
+  --card-ooo-bg: rgba(148,163,184,0.08);
+  --card-ooo-border: #94a3b8;
+  --card-pause-bg: rgba(251,146,60,0.12);
+  --card-pause-border: #ea580c;
+  --card-pause-text: #c2410c;
+  --header-today-bg: #eef2ff;
+  --header-today-border: #6366f1;
+  --nav-bg: #f1f5f9;
+  --nav-hover: #ffffff;
+  --nav-text: #0f172a;
+  --btn-checkin-bg: #ecfdf5;
+  --btn-checkin-border: #a7f3d0;
+  --btn-checkin-text: #059669;
+  --btn-checkout-bg: #fef2f2;
+  --btn-checkout-border: #fecaca;
+  --btn-checkout-text: #dc2626;
+  --input-bg: #f8fafc;
+  --input-border: #e2e8f0;
+  --input-text: #0f172a;
+  --modal-section-bg: #f8fafc;
+  --modal-section-border: #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #0f172a;
+    --bg-card: #1e293b;
+    --bg-header: #1e293b;
+    --bg-today: #1e1b4b;
+    --bg-grid-cell: transparent;
+    --bg-scroll: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-indigo: #818cf8;
+    --text-indigo-light: #a5b4fc;
+    --border-main: #1e293b;
+    --border-light: #1a2536;
+    --grid-line: #000000;
+    --grid-line-light: #000000;
+    --border-indigo: #818cf8;
+    --ghost-border: #6366f1;
+    --ghost-bg: rgba(99,102,241,0.10);
+    --ghost-bg-hover: rgba(99,102,241,0.18);
+    --card-csv-bg: rgba(16,185,129,0.45);
+    --card-csv-border: #34d399;
+    --card-csv-text: #6ee7b7;
+    --card-manual-bg: rgba(20,184,166,0.45);
+    --card-manual-border: #2dd4bf;
+    --card-manual-text: #5eead4;
+    --card-booked-bg: rgba(14,165,233,0.45);
+    --card-booked-border: #38bdf8;
+    --card-booked-text: #7dd3fc;
+    --card-work-bg: rgba(99,102,241,0.35);
+    --card-work-border: #818cf8;
+    --card-work-text: #c7d2fe;
+    --card-ooo-bg: rgba(148,163,184,0.15);
+    --card-ooo-border: #64748b;
+    --card-pause-bg: rgba(251,146,60,0.45);
+    --card-pause-border: #fb923c;
+    --card-pause-text: #fdba74;
+    --header-today-bg: #1e1b4b;
+    --header-today-border: #818cf8;
+    --nav-bg: #1e293b;
+    --nav-hover: #334155;
+    --nav-text: #f1f5f9;
+    --btn-checkin-bg: rgba(16,185,129,0.2);
+    --btn-checkin-border: #065f46;
+    --btn-checkin-text: #6ee7b7;
+    --btn-checkout-bg: rgba(220,38,38,0.2);
+    --btn-checkout-border: #7f1d1d;
+    --btn-checkout-text: #fca5a5;
+    --input-bg: #1e293b;
+    --input-border: #334155;
+    --input-text: #f1f5f9;
+    --modal-section-bg: #1e293b;
+    --modal-section-border: #334155;
+  }
+}
+
 body {
-  @apply bg-slate-50 text-slate-900;
+  background: var(--bg-page);
+  color: var(--text-primary);
 }
 

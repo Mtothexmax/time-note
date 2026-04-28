@@ -191,8 +191,8 @@
     });
 </script>
 
-<div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-    <div bind:this={scrollContainer} class="overflow-y-auto" style="max-height: 780px">
+<div class="rounded-2xl shadow-xl overflow-hidden" style="background: var(--bg-card); border-color: var(--border-main)">
+    <div bind:this={scrollContainer} class="overflow-y-auto" style="max-height: 780px; background: var(--bg-scroll)">
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div 
             bind:this={gridEl}
@@ -201,7 +201,7 @@
             onpointermove={onGridPointerMove}
             onpointerleave={onGridPointerLeave}
         >
-            <div class="grid-cell bg-slate-50/50"></div>
+            <div class="grid-cell" style="background: var(--bg-header)"></div>
 
             {#each days as day, i}
                 <DayHeader 
@@ -215,12 +215,13 @@
             {#each hours as h}
                 {#each halfHours as m}
                     {@const labelRow = h * 2 + (m === '30' ? 3 : 2)}
-                    <div class="time-label" style="grid-row: {labelRow}">
+                    {@const off = h < 7 || h >= 20}
+                    <div class="time-label" class:off-hour={off} style="grid-row: {labelRow}">
                         {h}:{m}
                     </div>
                     {#each days as _, i}
                         <div 
-                            class="grid-cell" 
+                            class="grid-cell" class:off-hour={off}
                             style="grid-row: {labelRow}; grid-column: {i + 2}"
                         ></div>
                     {/each}
@@ -274,11 +275,27 @@
         padding-right: 2px;
         font-size: 0.65rem; 
         line-height: 1;
-        color: #94a3b8; 
+        margin-top: -5px;
+        color: var(--text-muted); 
         display: flex; 
         align-items: flex-start; 
         justify-content: flex-end; 
-        margin-top: -5px;
+    }
+    .grid-cell { 
+        border-right: 1px solid var(--grid-line-light); 
+        border-top: 1px solid var(--grid-line); 
+    }
+    @media (prefers-color-scheme: dark) {
+        .grid-cell { border-top: 1px solid #000 !important; border-right: 1px solid #000 !important; }
+    }
+    .off-hour {
+        background: rgba(0,0,0,0.035);
+    }
+    @media (prefers-color-scheme: dark) {
+        .off-hour { background: rgba(0,0,0,0.15); }
+    }
+    .time-label.off-hour {
+        opacity: 0.35;
     }
     .grid-cell { 
         border-right: 1px solid #f1f5f9; 
@@ -286,9 +303,9 @@
     }
     .ghost-slot {
         z-index: 5;
-        border: 2px dashed #a5b4fc;
+        border: 2px dashed var(--ghost-border);
         border-radius: 4px;
-        background: rgba(99,102,241,0.06);
+        background: var(--ghost-bg);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -296,8 +313,8 @@
         transition: background 0.1s;
     }
     .ghost-slot:hover {
-        background: rgba(99,102,241,0.12);
-        border-color: #6366f1;
+        background: var(--ghost-bg-hover);
+        border-color: var(--border-indigo);
     }
     .ghost-content {
         display: flex;
@@ -308,13 +325,13 @@
     .ghost-plus {
         font-size: 14px;
         font-weight: 800;
-        color: #6366f1;
+        color: var(--text-indigo-light);
         line-height: 1;
     }
     .ghost-time {
         font-size: 9px;
         font-weight: 700;
-        color: #6366f1;
+        color: var(--text-indigo-light);
         white-space: nowrap;
     }
 </style>

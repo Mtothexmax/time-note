@@ -111,12 +111,12 @@
     <div class="flex justify-between items-start">
         <div>
             <div class="flex items-center gap-1">
-                <span class="text-[10px] font-black text-slate-500 uppercase">{displayDate}</span>
+                <span class="text-[10px] font-black uppercase" style="color: var(--text-secondary)">{displayDate}</span>
                 {#if isToday}
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
+                    <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--text-indigo-light)"></span>
                 {/if}
             </div>
-            <div class="text-[9px] font-bold text-indigo-600">Netto: {nettoDisplay}</div>
+            <div class="text-[9px] font-bold" style="color: var(--text-indigo)">Netto: {nettoDisplay}</div>
         </div>
         <div class="flex gap-1">
             <button 
@@ -140,16 +140,16 @@
 <style>
     .day-header {
         grid-row: 1;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid var(--grid-line);
         text-align: center;
-        background: #f8fafc;
+        background: var(--bg-header);
         padding: 8px;
         position: sticky;
         top: 0;
         z-index: 40;
     }
     .day-header-today {
-        background: #eef2ff;
-        border-bottom-color: #6366f1;
+        background: var(--header-today-bg);
+        border-bottom-color: var(--header-today-border);
     }
 </style>

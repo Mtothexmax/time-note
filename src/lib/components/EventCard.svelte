@@ -136,10 +136,10 @@
         color: #64748b;
     }
 
-    :global(.card-csv) { border-left-color: #059669; border-left-width: 5px; background: rgba(16,185,129,0.12); color: #047857; border-left-style: solid; }
-    :global(.card-manual) { border-left-color: #0d9488; border-left-width: 5px; background: rgba(20,184,166,0.12); color: #115e59; border-left-style: solid; }
-    :global(.card-booked) { border-left-color: #0284c7; border-left-width: 5px; background: rgba(14,165,233,0.12); color: #075985; font-weight: 600; border-left-style: solid; }
-    :global(.card-work) { border-left-color: #4f46e5; border-left-width: 5px; background: rgba(99,102,241,0.10); color: #3730a3; border-left-style: dashed; }
-    :global(.card-ooo) { opacity: 0.3; background: rgba(148,163,184,0.08); border-left-color: #94a3b8; border-left-style: solid; }
-    :global(.card-pause) { border-left-color: #ea580c; border-left-width: 5px; background: rgba(251,146,60,0.12); color: #c2410c; border-left-style: solid; }
+    :global(.card-csv) { border-left-color: var(--card-csv-border); border-left-width: 5px; background: var(--card-csv-bg); color: var(--card-csv-text); border-left-style: solid; }
+    :global(.card-manual) { border-left-color: var(--card-manual-border); border-left-width: 5px; background: var(--card-manual-bg); color: var(--card-manual-text); border-left-style: solid; }
+    :global(.card-booked) { border-left-color: var(--card-booked-border); border-left-width: 5px; background: var(--card-booked-bg); color: var(--card-booked-text); font-weight: 600; border-left-style: solid; }
+    :global(.card-work) { border-left-color: var(--card-work-border); border-left-width: 5px; background: var(--card-work-bg); color: var(--card-work-text); border-left-style: dashed; }
+    :global(.card-ooo) { opacity: 0.3; background: var(--card-ooo-bg); border-left-color: var(--card-ooo-border); border-left-style: solid; }
+    :global(.card-pause) { border-left-color: var(--card-pause-border); border-left-width: 5px; background: var(--card-pause-bg); color: var(--card-pause-text); border-left-style: solid; }
 </style>

@@ -29,13 +29,14 @@
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div 
-            class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100"
+            class="p-6 rounded-3xl shadow-2xl w-full max-w-md"
+            style="background: var(--bg-card); border-color: var(--border-main)"
             onclick={(e) => e.stopPropagation()}
             transition:scale={{ duration: 200, start: 0.95 }}
         >
             <div class="flex justify-between items-start mb-4">
                 <h3 class="text-xl font-bold">{title}</h3>
-                <button onclick={onClose} class="text-slate-400 hover:text-slate-600 transition-colors">
+                <button onclick={onClose} class="transition-colors" style="color: var(--text-muted)" onmouseenter={(e) => (e.target as HTMLElement).style.color = 'var(--text-secondary)'} onmouseleave={(e) => (e.target as HTMLElement).style.color = 'var(--text-muted)'}>
                     <X size={24} />
                 </button>
             </div>
