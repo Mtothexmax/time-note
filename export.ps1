@@ -1,16 +1,13 @@
 param(
-    [switch]$Keep,
-    [string]$BasePath = ""
+    [string]$BasePath = "/time-note"
 )
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "=== Time-Note Export ===" -ForegroundColor Cyan
+Write-Host "=== Time-Note Export für GitHub Pages ===" -ForegroundColor Cyan
+Write-Host "Base path: $BasePath"
+Write-Host "Output:    docs/"
 Write-Host ""
-
-if ($BasePath -ne "") {
-    Write-Host "Base path: $BasePath (for subdirectory deployment like GitHub Pages)" -ForegroundColor Yellow
-}
 
 # 1. Install adapter-static if needed
 if (-not (Test-Path 'node_modules/@sveltejs/adapter-static')) {
@@ -20,11 +17,9 @@ if (-not (Test-Path 'node_modules/@sveltejs/adapter-static')) {
     Write-Host "[1/4] @sveltejs/adapter-static already installed" -ForegroundColor Green
 }
 
-# 2. Backup original config and create export config
+# 2. Backup config and create export config
 Write-Host "[2/4] Creating export config..." -ForegroundColor Yellow
 $origConfig = Get-Content 'svelte.config.js' -Raw
-
-$baseLine = if ($BasePath -ne "") { "`t`tpaths: { base: '$BasePath' }," } else { "" }
 $exportConfig = @"
 import adapter from '@sveltejs/adapter-static';
 const config = {
@@ -32,8 +27,8 @@ const config = {
 		runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true)
 	},
 	kit: {
-		$baseLine
-		adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html', precompress: false, strict: true })
+		paths: { base: '$BasePath' },
+		adapter: adapter({ pages: 'build', assets: 'build', fallback: null, precompress: false, strict: true })
 	}
 };
 export default config;
@@ -48,33 +43,32 @@ try {
     npm run build
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
-    # 4. Create export
-    Write-Host "[4/4] Creating export files..." -ForegroundColor Yellow
-    node bin/export-bundle.mjs
-    if ($LASTEXITCODE -ne 0) { throw "Bundle failed" }
+    # 4. Deploy to docs/ folder
+    Write-Host "[4/4] Deploying to docs/..." -ForegroundColor Yellow
+
+    # Clear docs/
+    if (Test-Path 'docs') {
+        Remove-Item 'docs/*' -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        New-Item -ItemType Directory -Path 'docs' | Out-Null
+    }
+
+    # Copy everything from build/ to docs/
+    Copy-Item 'build/*' 'docs/' -Recurse -Force
+
+    # Remove the fallback files if any (we don't use fallback)
+    Get-ChildItem 'docs' -Recurse -File | Where-Object { $_.Name -eq '.keep' -or $_.Name -eq '.gitkeep' } | Remove-Item -Force -ErrorAction SilentlyContinue
 
     Write-Host ""
     Write-Host "=== Done! ===" -ForegroundColor Cyan
-    if (Test-Path 'time-note-export/index.html') {
-        Write-Host "Portable folder: time-note-export/ (open index.html via file://)" -ForegroundColor Green
-    }
-    if (Test-Path 'time-note-export.html') {
-        $size = [math]::Round((Get-Item 'time-note-export.html').Length / 1KB)
-        Write-Host "Single file:     time-note-export.html ($size KB)" -ForegroundColor Green
-    }
-    if ($BasePath -ne "") {
-        Write-Host ""
-        Write-Host "For GitHub Pages deployment:" -ForegroundColor Cyan
-        Write-Host "  Copy the 'build' folder contents to your gh-pages branch root" -ForegroundColor White
-        Write-Host "  The site must be served under: $BasePath" -ForegroundColor White
-    }
+    $size = (Get-ChildItem 'docs' -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1KB
+    Write-Host "Deployed to docs/ ($([math]::Round($size, 0)) KB)" -ForegroundColor Green
+    Write-Host "GitHub Pages URL: https://mtothexmax.github.io/time-note/" -ForegroundColor Green
+
 } finally {
     # Restore original config
     Set-Content 'svelte.config.js' $origConfig
     Remove-Item 'src/routes/+layout.ts' -Force -ErrorAction SilentlyContinue
-    
-    if (-not $Keep -and (Test-Path 'build')) {
-        Remove-Item 'build' -Recurse -Force
-        Write-Host "Cleaned up build folder" -ForegroundColor DarkGray
-    }
+    Remove-Item 'build' -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Cleaned up" -ForegroundColor DarkGray
 }
