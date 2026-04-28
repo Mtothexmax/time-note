@@ -1,11 +1,16 @@
 param(
-    [switch]$Keep
+    [switch]$Keep,
+    [string]$BasePath = ""
 )
 
 $ErrorActionPreference = 'Stop'
 
 Write-Host "=== Time-Note Export ===" -ForegroundColor Cyan
 Write-Host ""
+
+if ($BasePath -ne "") {
+    Write-Host "Base path: $BasePath (for subdirectory deployment like GitHub Pages)" -ForegroundColor Yellow
+}
 
 # 1. Install adapter-static if needed
 if (-not (Test-Path 'node_modules/@sveltejs/adapter-static')) {
@@ -18,6 +23,8 @@ if (-not (Test-Path 'node_modules/@sveltejs/adapter-static')) {
 # 2. Backup original config and create export config
 Write-Host "[2/4] Creating export config..." -ForegroundColor Yellow
 $origConfig = Get-Content 'svelte.config.js' -Raw
+
+$baseLine = if ($BasePath -ne "") { "`t`tpaths: { base: '$BasePath' }," } else { "" }
 $exportConfig = @"
 import adapter from '@sveltejs/adapter-static';
 const config = {
@@ -25,6 +32,7 @@ const config = {
 		runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true)
 	},
 	kit: {
+		$baseLine
 		adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html', precompress: false, strict: true })
 	}
 };
@@ -40,7 +48,7 @@ try {
     npm run build
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
-    # 4. Bundle and create export
+    # 4. Create export
     Write-Host "[4/4] Creating export files..." -ForegroundColor Yellow
     node bin/export-bundle.mjs
     if ($LASTEXITCODE -ne 0) { throw "Bundle failed" }
@@ -53,6 +61,12 @@ try {
     if (Test-Path 'time-note-export.html') {
         $size = [math]::Round((Get-Item 'time-note-export.html').Length / 1KB)
         Write-Host "Single file:     time-note-export.html ($size KB)" -ForegroundColor Green
+    }
+    if ($BasePath -ne "") {
+        Write-Host ""
+        Write-Host "For GitHub Pages deployment:" -ForegroundColor Cyan
+        Write-Host "  Copy the 'build' folder contents to your gh-pages branch root" -ForegroundColor White
+        Write-Host "  The site must be served under: $BasePath" -ForegroundColor White
     }
 } finally {
     # Restore original config
