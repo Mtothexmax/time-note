@@ -56,8 +56,8 @@ try {
     # Copy everything from build/ to docs/
     Copy-Item 'build/*' 'docs/' -Recurse -Force
 
-    # Remove the fallback files if any (we don't use fallback)
-    Get-ChildItem 'docs' -Recurse -File | Where-Object { $_.Name -eq '.keep' -or $_.Name -eq '.gitkeep' } | Remove-Item -Force -ErrorAction SilentlyContinue
+    # Disable Jekyll: without this, GitHub Pages ignores _app/ folder
+    Set-Content 'docs/.nojekyll' ''
 
     Write-Host ""
     Write-Host "=== Done! ===" -ForegroundColor Cyan
