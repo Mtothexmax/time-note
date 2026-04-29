@@ -48,11 +48,9 @@ export function getGridRow(time: string): number {
     return (h * 2) + (m >= 30 ? 3 : 2);
 }
 
-export function getEndRow(start: string, end: string): number {
-    const [h, m] = start.split(':').map(Number);
-    const dur = getDurationMin(start, end);
-    const durRows = Math.max(15, dur) / 30;
-    return h * 2 + 2 + m / 30 + durRows;
+export function getRowSpan(start: string, end: string): number {
+    const duration = getDurationMin(start, end);
+    return Math.max(1, Math.ceil(Math.max(15, duration) / 30));
 }
 
 export function diffDays(a: Date, b: Date): number {
