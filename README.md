@@ -1,42 +1,23 @@
-# sv
+# Time-Note
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Zeiterfassungs-Tool mit Kalender-Grid, Outlook-CSV-Import, Buchungsnummern-Dictionary und Check-in/Check-out.
 
-## Creating a project
+## Live
 
-If you're seeing this, you've probably already done this step. Congrats!
+[https://mtothexmax.github.io/time-note/](https://mtothexmax.github.io/time-note/)
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+## Dev
 
 ```sh
-# recreate this project
-npx sv@0.15.1 create --template minimal --types ts --install npm time-note
+npm run dev      # Entwicklungsserver starten
+npm run check    # Type-Check
 ```
 
-## Developing
+## Deployment (GitHub Pages)
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```powershell
+.\export.ps1     # Baut und deployt nach docs/
+git add docs/
+git commit -m "deploy"
+git push
 ```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
