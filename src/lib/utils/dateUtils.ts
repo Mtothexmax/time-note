@@ -95,3 +95,16 @@ export function computeOverlaps(slots: TimeSlot[]): Map<string, { zIndex: number
     }
     return result;
 }
+
+
+export function csvDateToISO(date?: string): string | null {
+    if (!date || typeof date !== 'string') return null;
+
+    const parts = date.split('-');
+    if (parts.length !== 3) return null;
+
+    const [d, m, y] = parts;
+    if (!d || !m || !y) return null;
+
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}

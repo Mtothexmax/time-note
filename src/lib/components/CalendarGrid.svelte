@@ -4,7 +4,7 @@
     import { calendarStore } from '$lib/stores/calendarStore.svelte';
     import DayHeader from './DayHeader.svelte';
     import EventCard from './EventCard.svelte';
-    import { formatDate, diffDays, toMinutes, computeOverlaps, getDurationMin, stripSeconds } from '$lib/utils/dateUtils';
+    import { formatDate, diffDays, toMinutes, computeOverlaps, getDurationMin, stripSeconds, csvDateToISO } from '$lib/utils/dateUtils';
 
     let { onOpenMeeting, onOpenWork, onOpenManual, onOverlapMenu } = $props<{
         onOpenMeeting: (ev: any) => void;
@@ -135,10 +135,10 @@
 
             // CSV events (only if they fall on this day)
             calendarStore.events.forEach(ev => {
-                const dateParts = ev["Start Date"].split('-');
-                const evDateStr = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+
+                const evDateStr = csvDateToISO(ev["Start Date"]);
                 if (evDateStr !== dStr) return;
-                if (isOOO(ev) && calendarStore.hideOOO) return;
+
                 const id = `csv-${ev.id}`;
                 const sm = toMinutes(ev["Start Time"]), em = toMinutes(ev["End Time"]);
                 if (!isNaN(sm) && !isNaN(em)) {

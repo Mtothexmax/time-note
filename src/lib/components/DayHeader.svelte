@@ -2,7 +2,7 @@
 <script lang="ts">
     import { Copy, Plus } from 'lucide-svelte';
     import { calendarStore } from '$lib/stores/calendarStore.svelte';
-    import { getDurationMin, formatDur, roundTo15, formatDate, stripSeconds } from '$lib/utils/dateUtils';
+    import { getDurationMin, formatDur, roundTo15, formatDate, stripSeconds, csvDateToISO } from '$lib/utils/dateUtils';
 
     let { date, dayIndex, onAddManual, onAddWork } = $props<{
         date: Date;
@@ -24,8 +24,10 @@
 
         const pauseMin = calendarStore.events
             .filter(ev => {
-                const p = ev["Start Date"].split('-');
-                return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
+                
+                const iso = csvDateToISO(ev["Start Date"]);
+                return iso === dateStr;
+
             })
             .filter(ev => ev.Subject.toLowerCase().includes("pause"))
             .reduce((sum, ev) => sum + getDurationMin(ev["Start Time"], ev["End Time"]), 0);
@@ -41,8 +43,10 @@
 
     function getDayMeetings() {
         const dayEvents = calendarStore.events.filter(ev => {
-            const p = ev["Start Date"].split('-');
-            return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
+
+            const iso = csvDateToISO(ev["Start Date"]);
+            return iso === dateStr;
+
         }).map(e => ({
             booking: calendarStore.bookings[e.id],
             dur: getDurationMin(e["Start Time"], e["End Time"]),
@@ -59,6 +63,8 @@
         }));
         return [...dayEvents, ...dayManual];
     }
+
+
 
     function copyToClipboard() {
         const workIntervals = calendarStore.workData[dateStr] || [];
