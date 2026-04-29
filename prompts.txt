@@ -1,0 +1,4 @@
+-show a cursor that symbolizes the current time
+-make the length more precise, so it actually fits the length in duration but also do not allow durations lower than 15 min in card length equivalent because then it would get too small
+-the menu when cards are covering another is still white and when out of office is over the white background then it is not properly displayedi n dark mode
+-the dark mode is not properly used in the dictionary popup
