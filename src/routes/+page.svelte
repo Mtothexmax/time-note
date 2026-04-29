@@ -194,17 +194,20 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="fixed inset-0 z-[9998] bg-transparent" onclick={closeOverlapMenu}></div>
     <div 
-        class="fixed z-[9999] bg-white border border-slate-200 rounded-lg shadow-xl min-w-[180px] max-w-[260px] py-1"
-        style="top: {overlapMenuPos.y}px; left: {overlapMenuPos.x}px;"
+        class="fixed z-[9999] rounded-lg shadow-xl min-w-[180px] max-w-[260px] py-1"
+        style="top: {overlapMenuPos.y}px; left: {overlapMenuPos.x}px; background: var(--bg-card); border: 1px solid var(--border-main);"
     >
-        <div class="px-2 py-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">Termine</div>
+        <div class="px-2 py-1 text-[9px] font-black uppercase tracking-wider" style="color: var(--text-muted)">Termine</div>
         {#each overlapMenuEvents as oe}
             <button 
-                class="w-full text-left px-2 py-1.5 hover:bg-slate-100 flex flex-col gap-0.5"
+                class="w-full text-left px-2 py-1.5 flex flex-col gap-0.5 transition-colors"
+                style="color: var(--text-primary)"
+                onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--nav-hover)'}
+                onmouseleave={(e) => (e.target as HTMLElement).style.background = 'transparent'}
                 onclick={() => handleOverlapItemClick(oe.onClick)}
             >
                 <span class="text-[10px] font-semibold {oe.style}">{oe.title}</span>
-                <span class="text-[9px] text-slate-500">{oe.time} · {oe.date}</span>
+                <span class="text-[9px]" style="color: var(--text-secondary)">{oe.time} · {oe.date}</span>
             </button>
         {/each}
     </div>
@@ -231,23 +234,25 @@
             <div class="flex gap-2 items-center">
                 <input 
                     type="text" bind:value={entry.key} placeholder="Meeting-Name"
-                    class="flex-1 bg-slate-50 border rounded-lg p-2 text-xs font-bold"
+                    class="flex-1 rounded-lg p-2 text-xs font-bold"
+                    style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
                 >
                 <input 
                     type="text" bind:value={entry.value} placeholder="ZNR"
-                    class="w-24 bg-slate-50 border rounded-lg p-2 text-xs font-mono"
+                    class="w-24 rounded-lg p-2 text-xs font-mono"
+                    style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
                 >
-                <button onclick={() => removeDictEntry(i)} class="text-red-400 hover:text-red-600 p-1" aria-label="Eintrag löschen">
+                <button onclick={() => removeDictEntry(i)} class="p-1 transition-colors" style="color: var(--text-muted)" aria-label="Eintrag löschen">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
             </div>
         {/each}
     </div>
-    <button onclick={addDictEntry} class="w-full mt-3 py-2 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:border-indigo-300 hover:text-indigo-500 transition-all">
+    <button onclick={addDictEntry} class="w-full mt-3 py-2 border-2 border-dashed rounded-xl text-xs font-bold transition-all" style="border-color: var(--border-main); color: var(--text-muted)">
         + Eintrag
     </button>
     <div class="flex gap-2 mt-4">
-        <button onclick={() => { syncDict(); dictOpen = false; }} class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors">
+        <button onclick={() => { syncDict(); dictOpen = false; }} class="flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-colors" style="background: var(--text-indigo); color: white">
             Speichern
         </button>
     </div>

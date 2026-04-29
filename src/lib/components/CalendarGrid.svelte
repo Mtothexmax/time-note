@@ -27,6 +27,23 @@
 
     let scrollContainer: HTMLDivElement;
     let gridEl: HTMLDivElement;
+    let now = $state(new Date());
+    let cursorReady = $state(false);
+
+    $effect(() => {
+        now = new Date();
+        cursorReady = true;
+        const id = setInterval(() => now = new Date(), 60000);
+        return () => clearInterval(id);
+    });
+
+    const nowRow = $derived.by(() => {
+        const h = now.getHours(), m = now.getMinutes();
+        return h * 2 + 2 + m / 30;
+    });
+    const nowSlot = $derived(Math.floor(nowRow));
+    const nowOffsetPx = $derived((nowRow - nowSlot) * 30);
+    const nowVisible = $derived(cursorReady && nowRow >= 2 && nowRow <= 49);
 
     let hoverCol = $state(-1);
     let hoverRow = $state(2);
@@ -75,9 +92,12 @@
     }
 
     onMount(() => {
-        if (scrollContainer) {
-            scrollContainer.scrollTop = 480;
-        }
+        requestAnimationFrame(() => {
+            if (!scrollContainer) return;
+            const h = now.getHours(), m = now.getMinutes();
+            const cursorRow = h * 2 + 2 + m / 30;
+            scrollContainer.scrollTop = Math.max(420, (cursorRow - 2) * 30 - 300);
+        });
     });
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -259,6 +279,11 @@
                     </div>
                 </div>
             {/if}
+
+            {#if nowVisible}
+                <div class="now-cursor" style="grid-column: 2 / span {dayCount}; grid-row: {nowSlot} / span 1; transform: translateY({nowOffsetPx}px)"></div>
+                <div class="now-dot" style="grid-row: {nowSlot}; transform: translateY({nowOffsetPx}px)"></div>
+            {/if}
         </div>
     </div>
 </div>
@@ -297,9 +322,33 @@
     .time-label.off-hour {
         opacity: 0.35;
     }
-    .grid-cell { 
-        border-right: 1px solid #f1f5f9; 
-        border-top: 1px solid #e2e8f0; 
+    .now-cursor {
+        z-index: 8;
+        border-top: 2px solid #ef4444;
+        pointer-events: none;
+    }
+    .now-dot {
+        grid-column: 1;
+        z-index: 8;
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        padding-right: 2px;
+        pointer-events: none;
+    }
+    .now-dot::after {
+        content: '';
+        display: block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ef4444;
+        margin-top: -4px;
+        margin-right: -1px;
+    }
+    @media (prefers-color-scheme: dark) {
+        .now-cursor { border-top-color: #f87171; }
+        .now-dot::after { background: #f87171; }
     }
     .ghost-slot {
         z-index: 5;
