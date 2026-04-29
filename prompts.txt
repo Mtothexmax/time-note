@@ -3,3 +3,4 @@
 - at the the very left time bar do not show 9:30, liek half hours. keep the grid in that resolution but show the time only on full hours and also make the text bigger therefore
 - der auschecken button soll die zeit anzeigen wie lange man schon da ist und nur beim hovern wann man gekommen ist
 -das popup der presenzzeit soll neben dem mülleimersymbol auch noch einen button überall eintragen haben, was die zeiterfassungsnummer dann in alle felder der präsenzarbeit für diesen tag einträgt
+-wenn der text in der ticket nummer in der karte unendlich lange wird, wird auch die karte unendlich breit, bitte hier irgend ein trimming/elipsis
