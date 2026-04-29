@@ -1,3 +1,4 @@
 -make the height if cards more precise, so it actually fits the length in duration but also do not allow durations lower than 15 min in card length equivalent because then it would get too small
 -make the content of the html in general fill the screen. also no vertical scrullbars should appear if one displays the weekend.
 - at the the very left time bar do not show 9:30, liek half hours. keep the grid in that resolution but show the time only on full hours and also make the text bigger therefore
+- der auschecken button soll die zeit anzeigen wie lange man schon da ist und nur beim hovern wann man gekommen ist
