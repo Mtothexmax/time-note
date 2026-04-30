@@ -236,12 +236,12 @@
                 {#each halfHours as m}
                     {@const labelRow = h * 2 + (m === '30' ? 3 : 2)}
                     {@const off = h < 7 || h >= 20}
-                    <div class="time-label" class:off-hour={off} style="grid-row: {labelRow}">
-                        {h}:{m}
+                    <div class="time-label" class:off-hour={off} style="grid-row: {labelRow}; {m === '30' ? 'visibility: hidden' : ''}">
+                        {h}
                     </div>
                     {#each days as _, i}
                         <div 
-                            class="grid-cell" class:off-hour={off}
+                            class="grid-cell" class:off-hour={off} class:full-hour={m === '00'}
                             style="grid-row: {labelRow}; grid-column: {i + 2}"
                         ></div>
                     {/each}
@@ -297,10 +297,11 @@
     .time-label { 
         grid-column: 1; 
         text-align: right; 
-        padding-right: 2px;
-        font-size: 0.65rem; 
+        padding-right: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
         line-height: 1;
-        margin-top: -5px;
+        margin-top: -6px;
         color: var(--text-muted); 
         display: flex; 
         align-items: flex-start; 
@@ -310,8 +311,12 @@
         border-right: 1px solid var(--grid-line-light); 
         border-top: 1px solid var(--grid-line); 
     }
+    .full-hour {
+        border-top-width: 2px;
+    }
     @media (prefers-color-scheme: dark) {
         .grid-cell { border-top: 1px solid #000 !important; border-right: 1px solid #000 !important; }
+        .full-hour { border-top-width: 2px !important; }
     }
     .off-hour {
         background: rgba(0,0,0,0.035);
@@ -320,6 +325,8 @@
         .off-hour { background: rgba(0,0,0,0.15); }
     }
     .time-label.off-hour {
+        background: transparent;
+        color: var(--text-muted);
         opacity: 0.35;
     }
     .now-cursor {

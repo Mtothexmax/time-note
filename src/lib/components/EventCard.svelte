@@ -49,7 +49,7 @@
         <div class="font-bold truncate uppercase text-[9px]">{title}</div>
         <div class="text-[8px] opacity-60">{durationDisplay}</div>
         {#if booking}
-            <div class="mt-auto font-mono text-[8px] bg-white/40 px-1 rounded truncate">#{booking}</div>
+            <div class="mt-auto font-mono text-[8px] px-1 rounded" style="background: rgba(255,255,255,0.4); color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; width: 100%;">#{booking}</div>
         {/if}
     </div>
 
@@ -69,6 +69,7 @@
         position: relative;
         width: 80%;
         margin-left: auto;
+        overflow: hidden;
     }
     .event-card {
         margin: 1px; border-radius: 4px; padding: 4px; font-size: 0.7rem; line-height: 1.1;
@@ -78,6 +79,7 @@
         transition: transform 0.1s, box-shadow 0.1s;
         height: 100%;
         box-sizing: border-box;
+        min-width: 0;
     }
     .event-card:hover { z-index: 50 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
     
