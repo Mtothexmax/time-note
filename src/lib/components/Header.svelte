@@ -95,14 +95,18 @@
         {#if calendarStore.checkIn}
             <button onclick={() => calendarStore.checkOutNow()}
                 class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
-                style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border)"
-                title="Eingecheckt seit {checkInArrival}">
+                style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border); cursor: pointer"
+                title="Eingecheckt seit {checkInArrival}"
+                onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-border)'}
+                onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-bg)'}>
                 <Square size={14} /> {checkInElapsed}
             </button>
         {:else}
             <button onclick={() => calendarStore.checkInNow()}
                 class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
-                style="background: var(--btn-checkin-bg); color: var(--btn-checkin-text); border-color: var(--btn-checkin-border)">
+                style="background: var(--btn-checkin-bg); color: var(--btn-checkin-text); border-color: var(--btn-checkin-border); cursor: pointer"
+                onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-border)'}
+                onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-bg)'}>
                 <Play size={14} /> Einchecken
             </button>
         {/if}

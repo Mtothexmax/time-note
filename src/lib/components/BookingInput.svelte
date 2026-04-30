@@ -8,7 +8,7 @@
         onChange: (val: string) => void;
     }>();
 
-    const labels = ['Forgang', 'Projekt', 'Vorgang', 'Tätigkeit', 'Bemerkung'];
+    const labels = ['Projekt', 'Vorgang', 'Tätigkeit', 'Bemerkung'];
     const fieldCount = labels.length;
 
     let popupOpen = $state(false);

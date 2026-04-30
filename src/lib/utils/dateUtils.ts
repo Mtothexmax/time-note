@@ -48,11 +48,14 @@ export function getGridRow(time: string): number {
     return (h * 2) + (m >= 30 ? 3 : 2);
 }
 
-export function getEndRow(start: string, end: string): number {
-    const startRow = getGridRow(start);
+export function getRowSpanCeil(start: string, end: string): number {
     const duration = getDurationMin(start, end);
-    const rounded15 = Math.ceil(Math.max(15, duration) / 15) * 15;
-    return startRow + rounded15 / 30;
+    return Math.max(1, Math.ceil(Math.max(15, duration) / 30));
+}
+
+export function getPreciseHeight(start: string, end: string): number {
+    const duration = getDurationMin(start, end);
+    return Math.max(15, Math.ceil(Math.max(15, duration) / 15) * 15);
 }
 
 export function diffDays(a: Date, b: Date): number {

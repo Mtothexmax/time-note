@@ -1,6 +1,6 @@
 
 <script lang="ts">
-    import { getGridRow, getEndRow, getDurationMin, formatDur, stripSeconds } from '$lib/utils/dateUtils';
+    import { getGridRow, getRowSpanCeil, getPreciseHeight, getDurationMin, formatDur, stripSeconds } from '$lib/utils/dateUtils';
     import { Layers } from 'lucide-svelte';
 
     let { 
@@ -28,7 +28,8 @@
     }>();
 
     const startRow = $derived(getGridRow(start));
-    const endRow = $derived(getEndRow(start, end));
+    const rowSpan = $derived(getRowSpanCeil(start, end));
+    const cardPx = $derived(getPreciseHeight(start, end));
     const durationMin = $derived(getDurationMin(start, end));
     const durationDisplay = $derived(formatDur(durationMin));
     const hasOverlaps = $derived(overlapEvents.length > 1);
@@ -43,7 +44,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div 
     class="event-card-wrapper"
-    style="grid-column: {dayColumn + 2}; grid-row: {startRow} / {endRow}; z-index: {zIndex}"
+    style="grid-column: {dayColumn + 2}; grid-row: {startRow} / span {rowSpan}; z-index: {zIndex}; max-height: {cardPx}px"
 >
     <div class="event-card {style}" onclick={onclick} title="{stripSeconds(start)} - {stripSeconds(end)}">
         <div class="font-bold truncate uppercase text-[9px]">{title}</div>

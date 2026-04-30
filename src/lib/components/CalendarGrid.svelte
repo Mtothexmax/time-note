@@ -103,8 +103,10 @@
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const halfHours = ['00', '30'];
 
-    function isOOO(ev: any) {
-        return ev["Show time as"] === "4" || ev.Subject.toLowerCase().includes("out of office");
+    function isOOO(subject: string, showTimeAs?: string) {
+        if (showTimeAs === "4") return true;
+        const s = subject.toLowerCase();
+        return s.includes('out of office') || s.includes('ooo');
     }
 
     function isPause(subject: string) {
@@ -161,6 +163,7 @@
 
                 const evDateStr = csvDateToISO(ev["Start Date"]);
                 if (evDateStr !== dStr) return;
+                if (isOOO(ev.Subject, ev["Show time as"]) && calendarStore.hideOOO) return;
 
                 const id = `csv-${ev.id}`;
                 const sm = toMinutes(ev["Start Time"]), em = toMinutes(ev["End Time"]);
@@ -170,7 +173,8 @@
                     const manualBooking = calendarStore.bookings[ev.id];
                     const effectiveBooking = manualBooking || dictBooking || '';
                     const hasZNR = !!effectiveBooking;
-                    const style = isOOO(ev) ? 'card-ooo' : (isPause(ev.Subject) ? 'card-pause' : (hasZNR ? 'card-booked' : 'card-csv'));
+                    const ooo = isOOO(ev.Subject, ev["Show time as"]);
+                    const style = ooo ? 'card-ooo' : (isPause(ev.Subject) ? 'card-pause' : (hasZNR ? 'card-booked' : 'card-csv'));
                     eventMap.set(id, { start: ev["Start Time"], end: ev["End Time"], title: ev.Subject, style, booking: effectiveBooking, onClick: () => onOpenMeeting(ev) });
                 }
             });
@@ -188,7 +192,13 @@
                 if (ov && ov.overlapIds.length > 1) {
                     const dateParts = dStr.split('-');
                     const displayDate = `${dateParts[2]}.${dateParts[1]}.`;
-                    overlapEvents = ov.overlapIds.map(oid => {
+                    const slotDur = slot.endMin - slot.startMin;
+                    const belowIds = ov.overlapIds.filter(oid => {
+                        if (oid === slot.id) return false;
+                        const s = slots.find(s => s.id === oid)!;
+                        return (s.endMin - s.startMin) > slotDur;
+                    });
+                    overlapEvents = belowIds.map(oid => {
                         const s = slots.find(s => s.id === oid)!;
                         const e = eventMap.get(oid)!;
                         return { title: e.title, time: `${stripSeconds(e.start)}-${stripSeconds(e.end)}`, date: displayDate, style: e.style, onClick: e.onClick };
@@ -238,13 +248,13 @@
             {#each hours as h}
                 {#each halfHours as m}
                     {@const labelRow = h * 2 + (m === '30' ? 3 : 2)}
-                    {@const off = h < 7 || h >= 20}
+                    {@const off = h < 7 || h > 20}
                     <div class="time-label" class:off-hour={off} style="grid-row: {labelRow}; {m === '30' ? 'visibility: hidden' : ''}">
                         {h}
                     </div>
                     {#each days as _, i}
                         <div 
-                            class="grid-cell" class:off-hour={off} class:full-hour={m === '00'}
+                            class="grid-cell" class:off-hour={off} class:half-hour={m === '30'}
                             style="grid-row: {labelRow}; grid-column: {i + 2}"
                         ></div>
                     {/each}
@@ -314,18 +324,17 @@
         border-right: 1px solid var(--grid-line-light); 
         border-top: 1px solid var(--grid-line); 
     }
-    .full-hour {
-        border-top-width: 2px;
-    }
     @media (prefers-color-scheme: dark) {
         .grid-cell { border-top: 1px solid #000 !important; border-right: 1px solid #000 !important; }
-        .full-hour { border-top-width: 2px !important; }
     }
     .off-hour {
         background: rgba(0,0,0,0.035);
     }
     @media (prefers-color-scheme: dark) {
         .off-hour { background: rgba(0,0,0,0.15); }
+    }
+    .half-hour {
+        opacity: 0.5;
     }
     .time-label.off-hour {
         background: transparent;
