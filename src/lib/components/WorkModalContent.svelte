@@ -1,6 +1,7 @@
 
 <script lang="ts">
-    import { Trash2, Plus } from 'lucide-svelte';
+    import { Trash2, Plus, Copy } from 'lucide-svelte';
+    import BookingInput from './BookingInput.svelte';
     import type { WorkInterval } from '$lib/stores/calendarStore.svelte';
 
     let { intervals, onSave } = $props<{
@@ -21,6 +22,12 @@
     function removeInterval(index: number) {
         localIntervals.splice(index, 1);
     }
+
+    function copyBookingToAll(index: number) {
+        const booking = localIntervals[index].booking;
+        if (!booking) return;
+        localIntervals = localIntervals.map((iv, i) => i === index ? iv : { ...iv, booking });
+    }
 </script>
 
 <div class="space-y-4">
@@ -29,7 +36,12 @@
             <div class="flex gap-2 items-center p-2 rounded-xl" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border)">
                 <input type="time" bind:value={interval.start} class="w-20 rounded p-1 text-xs font-bold" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
                 <input type="time" bind:value={interval.end} class="w-20 rounded p-1 text-xs font-bold" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
-                <input type="text" bind:value={interval.booking} placeholder="ZNR" class="flex-1 rounded p-1 text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+                <div class="flex-1 min-w-0">
+                    <BookingInput value={interval.booking} onChange={(v) => interval.booking = v} />
+                </div>
+                <button onclick={() => copyBookingToAll(i)} class="transition-colors" style="color: var(--text-muted)" title="Buchungsnummer auf alle Intervalle kopieren">
+                    <Copy size={12} />
+                </button>
                 <button onclick={() => removeInterval(i)} class="transition-colors" style="color: var(--text-muted)">
                     <Trash2 size={12} />
                 </button>

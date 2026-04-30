@@ -145,11 +145,14 @@
 
             // Manual meetings
             (calendarStore.manualMeetings[dStr] || []).forEach((m) => {
+                const isManualOOO = m.subject.toLowerCase().includes('out of office');
+                if (isManualOOO && calendarStore.hideOOO) return;
                 const id = `manual-${m.id}`;
                 const sm = toMinutes(m.start), em = toMinutes(m.end);
                 if (!isNaN(sm) && !isNaN(em)) {
                     slots.push({ id, startMin: sm, endMin: em });
-                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style: m.booking ? 'card-booked' : 'card-manual', booking: m.booking, onClick: () => onOpenManual(dStr, m.id) });
+                    const style = isManualOOO ? 'card-ooo' : (m.booking ? 'card-booked' : 'card-manual');
+                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: m.booking, onClick: () => onOpenManual(dStr, m.id) });
                 }
             });
 
@@ -212,7 +215,7 @@
 </script>
 
 <div class="rounded-2xl shadow-xl overflow-hidden" style="background: var(--bg-card); border-color: var(--border-main)">
-    <div bind:this={scrollContainer} class="overflow-y-auto" style="max-height: 780px; background: var(--bg-scroll)">
+    <div bind:this={scrollContainer} class="overflow-y-auto" style="max-height: calc(100vh - 150px); background: var(--bg-scroll)">
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div 
             bind:this={gridEl}

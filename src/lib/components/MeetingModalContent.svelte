@@ -1,6 +1,7 @@
 
 <script lang="ts">
     import { Trash2, Plus } from 'lucide-svelte';
+    import BookingInput from './BookingInput.svelte';
     import { calendarStore, type ManualMeeting, type WorkInterval } from '$lib/stores/calendarStore.svelte';
 
     let { 
@@ -37,15 +38,8 @@
     </div>
 
     <div>
-        <label for="bookingInput" class="block text-[10px] font-black uppercase mb-1" style="color: var(--text-muted)">Buchungsnummer (ZNR)</label>
-        <input 
-            type="text" 
-            id="bookingInput"
-            bind:value={localData.booking} 
-            class="w-full rounded-xl p-3 font-mono outline-none"
-            style="background: var(--input-bg); border: 2px solid var(--input-border); color: var(--input-text)"
-            placeholder="P00000"
-        >
+        <label class="block text-[10px] font-black uppercase mb-1" style="color: var(--text-muted)">Buchungsnummer</label>
+        <BookingInput value={localData.booking ?? ''} onChange={(v) => localData.booking = v} />
     </div>
 
     {#if onDelete}

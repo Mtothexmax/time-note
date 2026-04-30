@@ -10,7 +10,14 @@
         const e = new Date(s.getTime() + 6 * 86400000);
         return `${s.getDate()}.${s.getMonth() + 1}. – ${e.getDate()}.${e.getMonth() + 1}.${e.getFullYear()}`;
     });
-    const checkInTime = $derived(calendarStore.checkIn
+    const checkInElapsed = $derived.by(() => {
+        if (!calendarStore.checkIn) return null;
+        const diff = Date.now() - new Date(calendarStore.checkIn).getTime();
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        return `${h}:${String(m).padStart(2, '0')}`;
+    });
+    const checkInArrival = $derived(calendarStore.checkIn
         ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         : null);
 
@@ -88,8 +95,9 @@
         {#if calendarStore.checkIn}
             <button onclick={() => calendarStore.checkOutNow()}
                 class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
-                style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border)">
-                <Square size={14} /> Auschecken {checkInTime}
+                style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border)"
+                title="Eingecheckt seit {checkInArrival}">
+                <Square size={14} /> {checkInElapsed}
             </button>
         {:else}
             <button onclick={() => calendarStore.checkInNow()}

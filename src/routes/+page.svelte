@@ -165,7 +165,7 @@
     }
 </script>
 
-<div class="max-w-[1600px] mx-auto p-4 min-h-screen">
+<div class="max-w-[1600px] mx-auto p-4 h-screen flex flex-col overflow-hidden">
     <Header onOpenBookingDict={openDict} />
 
     <CalendarGrid 
@@ -238,7 +238,7 @@
                     style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
                 >
                 <input 
-                    type="text" bind:value={entry.value} placeholder="ZNR"
+                    type="text" bind:value={entry.value} placeholder="Buchungsnummer"
                     class="w-24 rounded-lg p-2 text-xs font-mono"
                     style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
                 >
