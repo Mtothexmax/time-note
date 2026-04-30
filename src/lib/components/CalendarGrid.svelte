@@ -66,8 +66,9 @@
         }
 
         const rect = gridEl.getBoundingClientRect();
-        const colW = (rect.width - 80) / dayCount;
-        const col = Math.floor(((e.clientX - rect.left) - 80) / colW);
+        const tCol = 30;
+        const colW = (rect.width - tCol) / dayCount;
+        const col = Math.floor(((e.clientX - rect.left) - tCol) / colW);
         if (col < 0 || col >= dayCount) { hoverVisible = false; return; }
 
         const y = e.clientY - rect.top;
@@ -224,13 +225,13 @@
     });
 </script>
 
-<div class="rounded-2xl shadow-xl overflow-hidden" style="background: var(--bg-card); border-color: var(--border-main)">
-    <div bind:this={scrollContainer} class="overflow-y-auto" style="max-height: calc(100vh - 150px); background: var(--bg-scroll)">
+<div class="rounded-2xl shadow-xl overflow-hidden" style="background: var(--bg-card); border-color: var(--border-main); flex: 1; min-height: 0;">
+    <div bind:this={scrollContainer} class="overflow-y-auto" style="height: 100%; background: var(--bg-scroll)">
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div 
             bind:this={gridEl}
             class="calendar-grid" 
-            style="grid-template-columns: 80px repeat({dayCount}, 1fr)"
+            style="grid-template-columns: 30px repeat({dayCount}, 1fr)"
             onpointermove={onGridPointerMove}
             onpointerleave={onGridPointerLeave}
         >
@@ -309,8 +310,8 @@
     }
     .time-label { 
         grid-column: 1; 
-        text-align: right; 
-        padding-right: 6px;
+        text-align: center; 
+        padding-right: 0;
         font-size: 0.75rem;
         font-weight: 600;
         line-height: 1;
@@ -334,7 +335,10 @@
         .off-hour { background: rgba(0,0,0,0.15); }
     }
     .half-hour {
-        opacity: 0.5;
+        border-top-color: rgba(128,128,128,0.15);
+    }
+    @media (prefers-color-scheme: dark) {
+        .half-hour { border-top-color: rgba(0,0,0,0.15) !important; }
     }
     .time-label.off-hour {
         background: transparent;

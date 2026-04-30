@@ -166,7 +166,7 @@
     }
 </script>
 
-<div class="max-w-[1600px] mx-auto p-4 h-screen flex flex-col overflow-hidden">
+<div class="w-full p-4 h-screen flex flex-col overflow-hidden">
     <Header onOpenBookingDict={openDict} />
 
     <CalendarGrid 
