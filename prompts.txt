@@ -1,5 +1,12 @@
--make the height if cards more precise, so it actually fits the length in duration but also do not allow durations lower than 15 min in card length equivalent because then it would get too small
--make the content of the html in general fill the screen. also no vertical scrullbars should appear if one displays the weekend.
-- der auschecken button soll die zeit anzeigen wie lange man schon da ist und nur beim hovern wann man gekommen ist
--das popup der presenzzeit soll neben dem mülleimersymbol auch noch einen button überall eintragen haben, was die zeiterfassungsnummer dann in alle felder der präsenzarbeit für diesen tag einträgt
--die checkbox out of office soll auch die elemente ausblenden die den text out of office haben. bitte to lower für den string comparison benutzen.
+-out of office ausblenden (also meetings die out of office im namen haben) geht immernoch nciht 
+
+- das edit für die buchungsnummer popup geht noch nicht bei dem dictionary popup oben rechts.
+
+- bezüglich diesem stacked cards over another: bitte wenn zum biespiel ein item A über einem großen ist aber über dem großen auch 3 andere liegen dann soll bei dem item A nur 1 stehen und im menü nur das item darunter zur auswahl stehen. nicht das darunter und alle die auf diesem sind.
+
+-bei der linken timeline die zahl 20 muss noch in der farbe wiedie zahl 19 sein und die halben stunden gitterlinien (nicht die vollen) sollen 50 prozent trasparent sein
+
+-regression: ein item dass ich von 9:00 bis 11:15 angelegt habe wird jetzt unter 23:59 unten agezeigt (außerhalb des bereichts). so einen bug gab es schonmal
+
+
+- der button zum ein/auschecken hat keinen hover effect mehr und auch keinen hyperlink mauszeiger mehr, es muss beides aber haben
