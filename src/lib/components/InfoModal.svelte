@@ -43,21 +43,23 @@ Write-Host "Pfad kopiert: $Pfad"`;
         {/each}
     </div>
 
-    {#if activeTab === 0}
-        <div class="space-y-3">
-            <p class="text-xs leading-relaxed" style="color: var(--text-secondary)">
-                Mit <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener" class="underline" style="color: var(--text-indigo)">Tampermonkey</a> 
-                kannst du die exportierte JSON-Datei automatisiert in ZEP importieren.
-            </p>
-            <CodeBlock code={tampermonkeyCode} language="JavaScript" />
-        </div>
-    {:else}
-        <div class="space-y-3">
-            <p class="text-xs leading-relaxed" style="color: var(--text-secondary)">
-                Mit diesem PowerShell-Script kopierst du den Pfad zur exportierten Outlook-Kalender-CSV 
-                in die Zwischenablage. Nach Ausführung kann der Pfad mit Strg+V eingefügt werden.
-            </p>
-            <CodeBlock code={psCode} language="PowerShell" />
-        </div>
-    {/if}
+    <div style="height: 400px; overflow-y: auto;">
+        {#if activeTab === 0}
+            <div class="space-y-3">
+                <p class="text-xs leading-relaxed" style="color: var(--text-secondary)">
+                    Mit <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener" class="underline" style="color: var(--text-indigo)">Tampermonkey</a> 
+                    kannst du die exportierte JSON-Datei automatisiert in ZEP importieren.
+                </p>
+                <CodeBlock code={tampermonkeyCode} language="JavaScript" />
+            </div>
+        {:else}
+            <div class="space-y-3">
+                <p class="text-xs leading-relaxed" style="color: var(--text-secondary)">
+                    Mit diesem PowerShell-Script kopierst du den Pfad zur exportierten Outlook-Kalender-CSV 
+                    in die Zwischenablage. Nach Ausführung kann der Pfad mit Strg+V eingefügt werden.
+                </p>
+                <CodeBlock code={psCode} language="PowerShell" />
+            </div>
+        {/if}
+    </div>
 </Modal>
