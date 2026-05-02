@@ -32,7 +32,7 @@
     const cardPx = $derived(getPreciseHeight(start, end));
     const durationMin = $derived(getDurationMin(start, end));
     const durationDisplay = $derived(formatDur(durationMin));
-    const hasOverlaps = $derived(overlapEvents.length > 1);
+    const hasOverlaps = $derived(overlapEvents.length > 0);
 
     function toggleMenu(e: MouseEvent) {
         e.stopPropagation();
@@ -48,7 +48,7 @@
 >
     <div class="event-card {style}" onclick={onclick} title="{stripSeconds(start)} - {stripSeconds(end)}">
         <div class="font-bold truncate uppercase text-[9px]">{title}</div>
-        <div class="text-[8px] opacity-60">{durationDisplay}</div>
+        <div class="text-[8px] opacity-60">{durationDisplay}h</div>
         {#if booking}
             <div class="mt-auto font-mono text-[8px] px-1 rounded" style="background: rgba(255,255,255,0.4); color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; width: 100%;">#{booking}</div>
         {/if}

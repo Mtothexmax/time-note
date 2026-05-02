@@ -44,6 +44,8 @@
     const nowSlot = $derived(Math.floor(nowRow));
     const nowOffsetPx = $derived((nowRow - nowSlot) * 30);
     const nowVisible = $derived(cursorReady && nowRow >= 2 && nowRow <= 49);
+    const todayStr = $derived(formatDate(new Date()));
+    const todayCol = $derived(days.findIndex(d => formatDate(d) === todayStr));
 
     let hoverCol = $state(-1);
     let hoverRow = $state(2);
@@ -249,13 +251,14 @@
             {#each hours as h}
                 {#each halfHours as m}
                     {@const labelRow = h * 2 + (m === '30' ? 3 : 2)}
-                    {@const off = h < 7 || h > 20}
-                    <div class="time-label" class:off-hour={off} style="grid-row: {labelRow}; {m === '30' ? 'visibility: hidden' : ''}">
+                    {@const cellOff = h < 7 || h >= 20}
+                    {@const labelOff = h < 7 || h > 20}
+                    <div class="time-label" class:off-hour={labelOff} style="grid-row: {labelRow}; {m === '30' ? 'visibility: hidden' : ''}">
                         {h}
                     </div>
                     {#each days as _, i}
                         <div 
-                            class="grid-cell" class:off-hour={off} class:half-hour={m === '30'}
+                            class="grid-cell" class:off-hour={cellOff} class:half-hour={m === '30'}
                             style="grid-row: {labelRow}; grid-column: {i + 2}"
                         ></div>
                     {/each}
@@ -298,6 +301,15 @@
                 <div class="now-cursor" style="grid-column: 2 / span {dayCount}; grid-row: {nowSlot} / span 1; transform: translateY({nowOffsetPx}px)"></div>
                 <div class="now-dot" style="grid-row: {nowSlot}; transform: translateY({nowOffsetPx}px)"></div>
             {/if}
+
+            {#if todayCol >= 0}
+                {#if todayCol > 0}
+                    <div class="day-overlay" style="grid-column: 2 / span {todayCol}; grid-row: 2 / span 48;"></div>
+                {/if}
+                {#if todayCol < dayCount - 1}
+                    <div class="day-overlay" style="grid-column: {todayCol + 3} / span {dayCount - todayCol - 1}; grid-row: 2 / span 48;"></div>
+                {/if}
+            {/if}
         </div>
     </div>
 </div>
@@ -339,6 +351,17 @@
     }
     @media (prefers-color-scheme: dark) {
         .half-hour { border-top-color: rgba(0,0,0,0.15) !important; }
+    }
+    .day-overlay {
+        z-index: 100;
+        pointer-events: none;
+        background: rgba(0,0,0,0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+        .day-overlay { background: rgba(0,0,0,0.5); }
+    }
+    @media (prefers-color-scheme: dark) {
+        .day-overlay { background: rgba(0,0,0,0.5); }
     }
     .time-label.off-hour {
         background: transparent;
