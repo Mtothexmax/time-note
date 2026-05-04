@@ -1,68 +1,21 @@
 // ==UserScript==
-// @name         Time-Note ZEP Integrator
-// @namespace    http://tampermonkey.net/
-// @version      3.0
-// @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
-// @author       Time-Note
-// @match        https://mtothexmax.github.io/time-note/*
-// @match        https://www.zep-online.de/zepintendgeoinformatik/*
-// @match        http://localhost:5173/*
-// @grant        GM_setValue
-// @grant        GM_getValue
-// @grant        unsafeWindow
-// @run-at       document-start
+// @name         ZEP JSON Import
+// @namespace    https://tampermonkey.net/
+// @version      6.0
+// @description  JSON-Import fuer ZEP Projektzeiten
+// @match        *://*/*
+// @grant        none
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
-    const LOG = (...a) => console.log('[Time-Note]', ...a);
+    const LOG = (...a) => console.log('[ZEP-Import]', ...a);
 
     function sleep(ms) {
         return new Promise(r => setTimeout(r, ms));
     }
 
-    LOG('Script gestartet auf:', location.hostname);
-
-    // --- Approach 1: CustomEvent (unsafeWindow) ---
-    unsafeWindow.addEventListener('time-note-data', function(e) {
-        const data = e.detail;
-        if (!data || !data.Datum) return;
-        LOG('[Event] Empfangen für:', data.Datum, '| Einträge:', data.Einträge?.length);
-        GM_setValue('tn_' + data.Datum, JSON.stringify(data));
-        LOG('[Event] GM_setValue gespeichert: tn_' + data.Datum);
-    });
-
-    // --- Approach 2: localStorage polling (fallback, runs on Time-Note pages) ---
-    // The app writes tn_export_YYYY-MM-DD to localStorage on every save/dispatch.
-    // This works regardless of sandbox/event timing issues.
-    function syncFromLocalStorage() {
-        try {
-            const ls = unsafeWindow.localStorage;
-            for (let i = 0; i < ls.length; i++) {
-                const key = ls.key(i);
-                if (!key || !key.startsWith('tn_export_')) continue;
-                const gmKey = 'tn_' + key.replace('tn_export_', '');
-                const val = ls.getItem(key);
-                if (val && GM_getValue(gmKey) !== val) {
-                    GM_setValue(gmKey, val);
-                    LOG('[localStorage] Synced:', gmKey);
-                }
-            }
-        } catch(e) {
-            LOG('[localStorage] Sync-Fehler:', e);
-        }
-    }
-
-    // Only poll on Time-Note pages (not on ZEP)
-    if (location.hostname !== 'www.zep-online.de') {
-        setInterval(syncFromLocalStorage, 2000);
-        syncFromLocalStorage();
-    }
-
-    // ------------------------------------------------------------------
-    // Normalize duration format  hh:mm
-    // ------------------------------------------------------------------
     function normalizeDauer(d) {
         const parts = d.split(':');
         return parts.length === 2
@@ -71,16 +24,16 @@
     }
 
     // ------------------------------------------------------------------
-    // Inline status display (survives ZEP re-renders via _status closure)
+    // Inline status display (non-blocking, survives ZEP re-renders)
     // ------------------------------------------------------------------
     let _status = { msg: '', type: 'info' };
 
     function setStatus(msg, type = 'info') {
         _status = { msg, type };
-        const el = document.getElementById('tn-import-status');
+        const el = document.getElementById('zep-import-status');
         if (!el) return;
         el.textContent = msg;
-        el.style.color = type === 'error'   ? '#dc3545'
+        el.style.color = type === 'error' ? '#dc3545'
                        : type === 'success' ? '#0B8069'
                        : '#555';
     }
@@ -95,7 +48,7 @@
         if (window.jQuery) {
             jQuery(selectEl).val(opt.value).trigger('change');
         } else {
-            selectEl.dispatchEvent(new Event('input',  { bubbles: true }));
+            selectEl.dispatchEvent(new Event('input', { bubbles: true }));
             selectEl.dispatchEvent(new Event('change', { bubbles: true }));
         }
         return true;
@@ -127,7 +80,9 @@
 
     async function waitForSave(expectedBemerkung, ms = 15000) {
         const msgDiv = getMsgDiv();
-        if (msgDiv) msgDiv.innerHTML = '';
+        if (msgDiv) {
+            msgDiv.innerHTML = '';
+        }
 
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -190,8 +145,8 @@
     }
 
     // ------------------------------------------------------------------
-    // Set the Dauer field — no 'change' event; ZEP's timeEntry plugin
-    // would overwrite the value and produce NaN
+    // Set the Dauer field (no timeEntry API — ZEP's variant produces NaN;
+    // no 'change' event — it re-triggers the plugin and overwrites the value)
     // ------------------------------------------------------------------
     function setDauer(value) {
         const el = document.getElementById('dauer');
@@ -203,7 +158,7 @@
     }
 
     // ------------------------------------------------------------------
-    // Fill one entry into the ZEP form
+    // Fill one entry into the form
     // ------------------------------------------------------------------
     async function fillEntry(datum, eintrag) {
         await setDate(datum);
@@ -261,45 +216,35 @@
     }
 
     // ------------------------------------------------------------------
-    // Get current date from hidden datum input
-    // ------------------------------------------------------------------
-    function getCurrentDate() {
-        const hidden = document.querySelector('input[name="datum"]');
-        return hidden ? hidden.value : null;
-    }
-
-    // ------------------------------------------------------------------
-    // Main import loop — reads data from GM storage for current date
+    // Main import loop
     // ------------------------------------------------------------------
     async function runImport() {
         LOG('Import gestartet');
-        const importBtn = document.getElementById('tn-import-btn');
+        setStatus('Lese Zwischenablage ...');
+
+        const importBtn = document.getElementById('zep-import-btn');
         if (importBtn) importBtn.disabled = true;
 
         try {
-            const datum = getCurrentDate();
-            if (!datum) {
-                setStatus('Fehler: Datum nicht gefunden', 'error');
-                return;
-            }
-
-            const dataStr = GM_getValue('tn_' + datum);
-            LOG('[Import] GM_getValue("tn_' + datum + '"):', dataStr ? 'gefunden (' + dataStr.length + ' chars)' : 'NICHT GEFUNDEN');
-            if (!dataStr) {
-                setStatus('Keine Time-Note-Daten für ' + datum, 'error');
+            let text;
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (e) {
+                LOG('Clipboard-Fehler:', e);
+                setStatus('Fehler: Kein Clipboard-Zugriff — Seite neu laden', 'error');
                 return;
             }
 
             let data;
             try {
-                data = JSON.parse(dataStr);
+                data = JSON.parse(text);
             } catch {
-                setStatus('Fehler: Ungültige gespeicherte Daten', 'error');
+                setStatus('Fehler: Kein gültiges JSON in der Zwischenablage', 'error');
                 return;
             }
 
-            if (!Array.isArray(data.Einträge) || !data.Einträge.length) {
-                setStatus('Keine Einträge für ' + datum, 'error');
+            if (!data.Datum || !Array.isArray(data.Einträge) || !data.Einträge.length) {
+                setStatus('Fehler: JSON-Format erwartet { "Datum": "...", "Einträge": [...] }', 'error');
                 return;
             }
 
@@ -312,7 +257,7 @@
                 LOG(`--- Eintrag ${i + 1}/${n} ---`);
 
                 try {
-                    await fillEntry(datum, eintrag);
+                    await fillEntry(data.Datum, eintrag);
 
                     const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
                     await sleep(2500);
@@ -338,37 +283,32 @@
     }
 
     // ------------------------------------------------------------------
-    // Button + status injection (survives ZEP card-footer re-renders)
+    // Button + status injection (both survive ZEP's card-footer re-renders
+    // because _status persists in the closure and is re-applied on each inject)
     // ------------------------------------------------------------------
     function injectButton() {
         const saveBtn = document.getElementById('Speichern');
         if (!saveBtn) return;
 
-        if (!document.getElementById('tn-import-btn')) {
-            const datum = getCurrentDate();
-            const hasData = datum && GM_getValue('tn_' + datum);
-
+        if (!document.getElementById('zep-import-btn')) {
             const btn = document.createElement('input');
             btn.type = 'button';
-            btn.id = 'tn-import-btn';
-            btn.value = 'Time-Note importieren';
+            btn.id = 'zep-import-btn';
+            btn.value = 'JSON importieren';
             btn.className = 'btn btn-secondary';
             btn.style.marginLeft = '0.5rem';
-            if (!hasData) {
-                btn.style.opacity = '0.6';
-                btn.title = 'Keine Time-Note-Daten für dieses Datum vorhanden';
-            }
             btn.addEventListener('click', runImport);
             saveBtn.parentElement.appendChild(btn);
             LOG('Import-Button eingefügt.');
         }
 
-        if (!document.getElementById('tn-import-status')) {
+        if (!document.getElementById('zep-import-status')) {
             const span = document.createElement('span');
-            span.id = 'tn-import-status';
+            span.id = 'zep-import-status';
             span.style.cssText = 'margin-left:0.75rem;font-size:0.875rem;vertical-align:middle;';
+            // Re-apply whatever status was showing before the re-render
             span.textContent = _status.msg;
-            span.style.color = _status.type === 'error'   ? '#dc3545'
+            span.style.color = _status.type === 'error' ? '#dc3545'
                              : _status.type === 'success' ? '#0B8069'
                              : '#555';
             saveBtn.parentElement.appendChild(span);
