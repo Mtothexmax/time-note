@@ -28,12 +28,7 @@
         for (let opt of el.options) {
             if (opt.title && opt.title.includes(wert)) {
                 el.value = opt.value;
-                // Native change (funktioniert bei ZEP-onchange Attributen)
                 el.dispatchEvent(new Event('change', { bubbles: true }));
-                // jQuery fallback (falls ZEP jQuery verwendet)
-                if (typeof jQuery !== 'undefined') {
-                    jQuery(el).trigger('change');
-                }
                 return true;
             }
         }
@@ -55,9 +50,6 @@
         const btns = [
             document.querySelector('button[type="submit"]'),
             document.querySelector('.btn-primary[type="submit"]'),
-            document.querySelector('button:contains("Speichern")'),
-            document.querySelector('[onclick*="speichern"]'),
-            document.querySelector('[onclick*="save"]'),
             document.querySelector('input[type="submit"]')
         ];
         for (let b of btns) {

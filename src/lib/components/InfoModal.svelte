@@ -35,7 +35,6 @@
             if (opt.title && opt.title.includes(wert)) {
                 el.value = opt.value;
                 el.dispatchEvent(new Event('change', { bubbles: true }));
-                if (typeof jQuery !== 'undefined') jQuery(el).trigger('change');
                 return true;
             }
         }
