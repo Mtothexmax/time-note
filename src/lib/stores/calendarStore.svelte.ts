@@ -103,7 +103,9 @@ class CalendarStore {
         const workIntervals = this.workData[dateStr] || [];
         const totalWorkMin = workIntervals.reduce((acc, curr) => acc + getDurationMin(curr.start, curr.end), 0);
         const dayEvents = this.events.filter(ev => {
+            if (!ev["Start Date"]) return false;
             const p = ev["Start Date"].split('-');
+            if (p.length < 3) return false;
             return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
         }).map(e => ({
             booking: this.bookings[e.id],
@@ -155,6 +157,7 @@ class CalendarStore {
     dispatchDayEvent(dateStr: string) {
         if (!browser) return;
         const data = this.buildDayJSON(dateStr);
+        localStorage.setItem('tn_export_' + dateStr, JSON.stringify(data));
         window.dispatchEvent(new CustomEvent('time-note-data', { detail: data }));
     }
 

@@ -6,7 +6,14 @@
     import MeetingModalContent from '$lib/components/MeetingModalContent.svelte';
     import WorkModalContent from '$lib/components/WorkModalContent.svelte';
     import BookingInput from '$lib/components/BookingInput.svelte';
+    import { onMount } from 'svelte';
     import { calendarStore, type ManualMeeting, type CSVEvent, type WorkInterval } from '$lib/stores/calendarStore.svelte';
+    import { formatDate } from '$lib/utils/dateUtils';
+
+    onMount(() => {
+        // Small delay ensures Tampermonkey's unsafeWindow listener is attached first
+        setTimeout(() => calendarStore.dispatchDayEvent(formatDate(new Date())), 300);
+    });
 
     type MeetingModalData = ManualMeeting & { timeInfo?: string; };
 
