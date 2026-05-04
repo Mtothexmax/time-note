@@ -125,8 +125,8 @@ class CalendarStore {
         let accountedMin = 0;
         const entries: { Dauer: string; Projekt: string; Vorgang: string; Tätigkeit: string; Bemerkung: string }[] = [];
         allMeetings.forEach(m => {
-            if (m.ooo) return;
             if (m.pause) { accountedMin += m.dur; return; }
+            if (m.ooo) return;
             const rounded = roundTo15(m.dur);
             if (rounded <= 0) return;
             const parts = (m.booking || '').split(';');

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Time-Note ZEP Integrator
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      3.2
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
 // @match        https://mtothexmax.github.io/time-note/*
@@ -35,7 +35,6 @@
 
     // --- Approach 2: localStorage polling (fallback, runs on Time-Note pages) ---
     // The app writes tn_export_YYYY-MM-DD to localStorage on every save/dispatch.
-    // This works regardless of sandbox/event timing issues.
     function syncFromLocalStorage() {
         try {
             const ls = unsafeWindow.localStorage;
@@ -86,17 +85,18 @@
     }
 
     // ------------------------------------------------------------------
-    // Select2: set by visible text, trigger jQuery + native events
+    // Set a <select> value without jQuery.
+    // ZEP's inline onchange="zepFormElement(this).refreshForm()" is called
+    // directly — this is what triggers the AJAX reload of dependent dropdowns.
+    // A native 'change' event is also dispatched so any other listeners fire.
     // ------------------------------------------------------------------
     function setSelect(selectEl, text) {
         const opt = [...selectEl.options].find(o => o.text.trim() === text.trim());
         if (!opt) return false;
         selectEl.value = opt.value;
-        if (window.jQuery) {
-            jQuery(selectEl).val(opt.value).trigger('change');
-        } else {
-            selectEl.dispatchEvent(new Event('input',  { bubbles: true }));
-            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        if (typeof selectEl.onchange === 'function') {
+            selectEl.onchange.call(selectEl);
         }
         return true;
     }
@@ -175,9 +175,9 @@
         const parts = datum.split('-');
         if (parts.length !== 3) throw new Error('Ungültiges Datum: ' + datum);
         const [y, m, d] = parts.map(Number);
-        if (window.zepDatumAuswahl) {
+        if (unsafeWindow.zepDatumAuswahl) {
             LOG(`Setze Datum: ${datum}`);
-            zepDatumAuswahl('#datum').setDate(new Date(y, m - 1, d));
+            unsafeWindow.zepDatumAuswahl('#datum').setDate(new Date(y, m - 1, d));
             await sleep(400);
         } else {
             const hidden = document.querySelector('input[name="datum"]');
@@ -214,6 +214,8 @@
             if (!sel) throw new Error('Projekt-Dropdown (#projektId) nicht gefunden');
             if (!setSelect(sel, eintrag.Projekt))
                 throw new Error('Projekt nicht gefunden: "' + eintrag.Projekt + '"');
+            // Wait for ZEP's AJAX refresh to start loading the Vorgang list
+            await sleep(800);
             if (eintrag.Vorgang)
                 await waitForOption('vorgangId', eintrag.Vorgang);
         }
@@ -250,8 +252,7 @@
     }
 
     // ------------------------------------------------------------------
-    // Click Speichern — native .click() required; jQuery .trigger('click')
-    // does not fire the browser's native form-submit for type="submit"
+    // Click Speichern — native .click() fires the browser's form-submit
     // ------------------------------------------------------------------
     function clickSpeichern() {
         const btn = document.getElementById('Speichern');
@@ -375,7 +376,15 @@
         }
     }
 
-    new MutationObserver(injectButton).observe(document.body, { childList: true, subtree: true });
-    setInterval(injectButton, 800);
-    injectButton();
+    function setupInjector() {
+        new MutationObserver(injectButton).observe(document.body, { childList: true, subtree: true });
+        setInterval(injectButton, 800);
+        injectButton();
+    }
+
+    if (document.body) {
+        setupInjector();
+    } else {
+        document.addEventListener('DOMContentLoaded', setupInjector);
+    }
 })();
