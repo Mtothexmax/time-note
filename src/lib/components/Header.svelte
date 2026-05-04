@@ -46,6 +46,11 @@
 
             calendarStore.events = events;
             calendarStore.save();
+            const dates = new Set(events.map(ev => {
+                const p = ev["Start Date"].split('-');
+                return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+            }));
+            dates.forEach(d => calendarStore.dispatchDayEvent(d));
         };
         reader.readAsText(input.files[0]);
     }

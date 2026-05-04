@@ -25,11 +25,13 @@
     });
 
     function openMeetingModal(ev: any) {
+        const p = ev["Start Date"].split('-');
+        const evDateStr = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
         meetingModal = {
             isOpen: true,
             title: ev.Subject,
             isManual: false,
-            dateStr: '',
+            dateStr: evDateStr,
             data: {
                 id: ev.id,
                 start: ev["Start Time"],
@@ -97,6 +99,7 @@
             }
         }
         calendarStore.save();
+        if (meetingModal.dateStr) calendarStore.dispatchDayEvent(meetingModal.dateStr);
         meetingModal.isOpen = false;
     }
 
@@ -109,6 +112,7 @@
                 delete calendarStore.bookings[meetingModal.data.id];
             }
             calendarStore.save();
+            if (meetingModal.dateStr) calendarStore.dispatchDayEvent(meetingModal.dateStr);
             meetingModal.isOpen = false;
         }
     }
@@ -116,6 +120,7 @@
     function saveWork(intervals: any[]) {
         calendarStore.workData[workModal.dateStr] = intervals.map(i => ({ ...i }));
         calendarStore.save();
+        if (workModal.dateStr) calendarStore.dispatchDayEvent(workModal.dateStr);
         workModal.isOpen = false;
     }
 

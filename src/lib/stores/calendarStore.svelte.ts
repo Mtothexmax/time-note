@@ -1,5 +1,5 @@
 
-import { formatDate, getMonday } from '$lib/utils/dateUtils';
+import { formatDate, getMonday, getDurationMin, formatDur, roundTo15 } from '$lib/utils/dateUtils';
 import { browser } from '$app/environment';
 
 export interface CSVEvent {
@@ -87,6 +87,7 @@ class CalendarStore {
         this.workData[dStr].push(interval);
         this.checkIn = null;
         this.save();
+        this.dispatchDayEvent(dStr);
     }
 
     clearAll() {
@@ -96,6 +97,65 @@ class CalendarStore {
         this.manualMeetings = {};
         this.checkIn = null;
         this.save();
+    }
+
+    buildDayJSON(dateStr: string): { Datum: string; Einträge: { Dauer: string; Projekt: string; Vorgang: string; Tätigkeit: string; Bemerkung: string }[] } {
+        const workIntervals = this.workData[dateStr] || [];
+        const totalWorkMin = workIntervals.reduce((acc, curr) => acc + getDurationMin(curr.start, curr.end), 0);
+        const dayEvents = this.events.filter(ev => {
+            const p = ev["Start Date"].split('-');
+            return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
+        }).map(e => ({
+            booking: this.bookings[e.id],
+            dur: getDurationMin(e["Start Time"], e["End Time"]),
+            title: e.Subject,
+            ooo: e["Show time as"] === "4" || e.Subject.toLowerCase().includes("out of office") || e.Subject.toLowerCase().includes("ooo"),
+            pause: e.Subject.toLowerCase().includes("pause")
+        }));
+        const dayManual = (this.manualMeetings[dateStr] || []).map(m => ({
+            booking: m.booking,
+            dur: getDurationMin(m.start, m.end),
+            title: m.subject,
+            ooo: m.subject.toLowerCase().includes("out of office") || m.subject.toLowerCase().includes("ooo"),
+            pause: m.subject.toLowerCase().includes("pause")
+        }));
+        const allMeetings = [...dayEvents, ...dayManual];
+        let accountedMin = 0;
+        const entries: { Dauer: string; Projekt: string; Vorgang: string; Tätigkeit: string; Bemerkung: string }[] = [];
+        allMeetings.forEach(m => {
+            if (m.ooo) return;
+            if (m.pause) { accountedMin += m.dur; return; }
+            const rounded = roundTo15(m.dur);
+            if (rounded <= 0) return;
+            const parts = (m.booking || '').split(';');
+            entries.push({
+                Dauer: formatDur(rounded),
+                Projekt: parts[0] || '',
+                Vorgang: parts[1] || '',
+                Tätigkeit: parts[2] || '',
+                Bemerkung: parts[3] || ''
+            });
+            accountedMin += rounded;
+        });
+        const workBooking = workIntervals.find(w => w.booking)?.booking || ';;;';
+        const nettoResidue = roundTo15(totalWorkMin - accountedMin);
+        if (nettoResidue > 0) {
+            const parts = workBooking.split(';');
+            entries.push({
+                Dauer: formatDur(nettoResidue),
+                Projekt: parts[0] || '',
+                Vorgang: parts[1] || '',
+                Tätigkeit: parts[2] || '',
+                Bemerkung: parts[3] || ''
+            });
+        }
+        return { Datum: dateStr, Einträge: entries };
+    }
+
+    dispatchDayEvent(dateStr: string) {
+        if (!browser) return;
+        const data = this.buildDayJSON(dateStr);
+        window.dispatchEvent(new CustomEvent('time-note-data', { detail: data }));
     }
 
     changeWeek(weeks: number) {
