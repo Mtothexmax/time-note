@@ -66,11 +66,22 @@
 
 
 
+    function toEntry(durMin: number, booking: string) {
+        const parts = (booking || '').split(';');
+        return {
+            Dauer: formatDur(durMin),
+            Projekt: parts[0] || '',
+            Vorgang: parts[1] || '',
+            Tätigkeit: parts[2] || '',
+            Bemerkung: parts[3] || ''
+        };
+    }
+
     function copyToClipboard() {
         const workIntervals = calendarStore.workData[dateStr] || [];
         let totalWorkMin = workIntervals.reduce((acc, curr) => acc + getDurationMin(curr.start, curr.end), 0);
 
-        let lines: string[] = [];
+        let entries: { Dauer: string; Projekt: string; Vorgang: string; Tätigkeit: string; Bemerkung: string }[] = [];
         let accountedMin = 0;
 
         getDayMeetings().forEach(m => {
@@ -81,25 +92,21 @@
             }
             const rounded = roundTo15(m.dur);
             if (rounded <= 0) return;
-            if (m.booking) {
-                lines.push(`${formatDur(rounded)} ${m.booking} (${m.title})`);
-            } else {
-                lines.push(`${formatDur(rounded)} (${m.title})`);
-            }
+            entries.push(toEntry(rounded, m.booking || `? (${m.title})`));
             accountedMin += rounded;
         });
 
-        const workZNR = workIntervals.find(w => w.booking)?.booking || "PRÄSENZ";
+        const workBooking = workIntervals.find(w => w.booking)?.booking || ';;;';
         const nettoResidue = roundTo15(totalWorkMin - accountedMin);
 
         if (nettoResidue > 0) {
-            lines.push(`${formatDur(nettoResidue)} ${workZNR} (Arbeit)`);
+            entries.push(toEntry(nettoResidue, workBooking));
         }
 
-        const finalContent = lines.join('\n');
+        const json = JSON.stringify({ Datum: dateStr, Einträge: entries }, null, 2);
 
         const textArea = document.createElement("textarea");
-        textArea.value = finalContent;
+        textArea.value = json;
         document.body.appendChild(textArea);
         textArea.select();
         try {
@@ -122,7 +129,7 @@
                     <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--text-indigo-light)"></span>
                 {/if}
             </div>
-            <div class="text-[9px] font-bold" style="color: var(--text-indigo)">Netto: {nettoDisplay}</div>
+            <div class="text-[9px] font-bold" style="color: var(--text-indigo)">Netto: {nettoDisplay}h</div>
         </div>
         <div class="flex gap-1">
             <button 
@@ -152,7 +159,7 @@
         padding: 8px;
         position: sticky;
         top: 0;
-        z-index: 40;
+        z-index: 101;
     }
     .day-header-today {
         background: var(--header-today-bg);

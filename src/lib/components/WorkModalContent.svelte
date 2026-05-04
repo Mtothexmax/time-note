@@ -2,6 +2,7 @@
 <script lang="ts">
     import { Trash2, Plus, Copy } from 'lucide-svelte';
     import BookingInput from './BookingInput.svelte';
+    import TimePicker from './TimePicker.svelte';
     import type { WorkInterval } from '$lib/stores/calendarStore.svelte';
 
     let { intervals, onSave } = $props<{
@@ -34,8 +35,8 @@
     <div class="space-y-2">
         {#each localIntervals as interval, i}
             <div class="flex gap-2 items-center p-2 rounded-xl" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border)">
-                <input type="time" bind:value={interval.start} class="w-20 rounded p-1 text-xs font-bold" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
-                <input type="time" bind:value={interval.end} class="w-20 rounded p-1 text-xs font-bold" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+                <TimePicker value={interval.start} onChange={(v) => interval.start = v} />
+                <TimePicker value={interval.end} onChange={(v) => interval.end = v} />
                 <div class="flex-1 min-w-0">
                     <BookingInput value={interval.booking} onChange={(v) => interval.booking = v} />
                 </div>

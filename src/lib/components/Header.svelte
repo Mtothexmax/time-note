@@ -1,9 +1,11 @@
 
 <script lang="ts">
-    import { ChevronLeft, ChevronRight, Upload, Trash2, Play, Square, BookOpen } from 'lucide-svelte';
+    import { ChevronLeft, ChevronRight, Upload, Trash2, Play, Square, BookOpen, Info } from 'lucide-svelte';
     import { calendarStore } from '$lib/stores/calendarStore.svelte';
+    import InfoModal from './InfoModal.svelte';
 
     let { onOpenBookingDict } = $props<{ onOpenBookingDict?: () => void }>();
+    let infoOpen = $state(false);
 
     const weekRange = $derived.by(() => {
         const s = calendarStore.currentWeekStart;
@@ -99,7 +101,7 @@
                 title="Eingecheckt seit {checkInArrival}"
                 onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-border)'}
                 onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-bg)'}>
-                <Square size={14} /> {checkInElapsed}
+                <Square size={14} /> {checkInElapsed}h
             </button>
         {:else}
             <button onclick={() => calendarStore.checkInNow()}
@@ -118,9 +120,14 @@
             <Trash2 size={16} />
         </button>
         {#if onOpenBookingDict}
-            <button onclick={onOpenBookingDict} class="p-2 text-slate-400 hover:text-indigo-500 transition" title="Buchungsnummern-Dictionary">
+            <button onclick={onOpenBookingDict} class="p-2 transition-colors" style="color: var(--text-muted)" title="Buchungsnummern-Dictionary">
                 <BookOpen size={16} />
             </button>
         {/if}
+        <button onclick={() => infoOpen = true} class="p-2 transition-colors" style="color: var(--text-muted)" title="Info">
+            <Info size={16} />
+        </button>
     </div>
 </header>
+
+<InfoModal isOpen={infoOpen} onClose={() => infoOpen = false} />

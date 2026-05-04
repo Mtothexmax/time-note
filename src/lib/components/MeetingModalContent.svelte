@@ -2,6 +2,7 @@
 <script lang="ts">
     import { Trash2, Plus } from 'lucide-svelte';
     import BookingInput from './BookingInput.svelte';
+    import TimePicker from './TimePicker.svelte';
     import { calendarStore, type ManualMeeting, type WorkInterval } from '$lib/stores/calendarStore.svelte';
 
     let { 
@@ -32,8 +33,8 @@
 
 <div class="space-y-4">
     <div class="grid grid-cols-2 gap-2 mb-4">
-        <input type="time" bind:value={localData.start} class="p-2 rounded-xl text-sm" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
-        <input type="time" bind:value={localData.end} class="p-2 rounded-xl text-sm" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+        <TimePicker value={localData.start} onChange={(v) => localData.start = v} />
+        <TimePicker value={localData.end} onChange={(v) => localData.end = v} />
         <input type="text" bind:value={localData.subject} placeholder="Titel" class="col-span-2 p-2 rounded-xl text-sm font-bold" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
     </div>
 
