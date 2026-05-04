@@ -44,7 +44,7 @@
                 start: ev["Start Time"],
                 end: ev["End Time"],
                 subject: ev.Subject,
-                booking: calendarStore.bookings[ev.id] || '',
+                booking: calendarStore.bookings[ev.id] || calendarStore.bookingDict[ev.Subject] || '',
                 timeInfo: `${ev["Start Time"]} - ${ev["End Time"]}`
             }
         };
