@@ -22,7 +22,7 @@
     <div 
         role="dialog"
         tabindex="-1"
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-4"
         onkeydown={handleKeydown}
         transition:fade={{ duration: 200 }}
     >
