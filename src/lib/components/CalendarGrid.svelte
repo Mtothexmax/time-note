@@ -174,7 +174,7 @@
                     slots.push({ id, startMin: sm, endMin: em });
                     const dictBooking = calendarStore.bookingDict[ev.Subject];
                     const manualBooking = calendarStore.bookings[ev.id];
-                    const effectiveBooking = manualBooking || dictBooking || '';
+                    const effectiveBooking = dictBooking || manualBooking || '';
                     const hasZNR = !!effectiveBooking;
                     const ooo = isOOO(ev.Subject, ev["Show time as"]);
                     const style = ooo ? 'card-ooo' : (isPause(ev.Subject) ? 'card-pause' : (hasZNR ? 'card-booked' : 'card-csv'));

@@ -6,6 +6,14 @@ param(
 )
 
 try {
+    # Outlook starten falls nicht bereits offen
+    $proc = Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue
+    if (-not $proc) {
+        Write-Host "Outlook wird gestartet..."
+        Start-Process outlook
+        Start-Sleep -Seconds 5
+    }
+
     $outlook   = New-Object -ComObject Outlook.Application
     $namespace = $outlook.GetNamespace("MAPI")
     $kalender  = $namespace.GetDefaultFolder(9)   # 9 = olFolderCalendar
@@ -44,12 +52,12 @@ try {
             }
 
             foreach ($item in $appts) {
-                $subject   = $item.Subject -replace '"', '""'
-                $startDate = $item.Start.ToString('dd-MM-yyyy')
+                $subject    = $item.Subject -replace '"', '""'
+                $startDate  = $item.Start.ToString('dd-MM-yyyy')
                 $startTime2 = $item.Start.ToString('HH:mm')
-                $endDate   = $item.End.ToString('dd-MM-yyyy')
-                $endTime   = $item.End.ToString('HH:mm')
-                $showAs    = if ($item.BusyStatus -eq 3) { 4 } else { $item.BusyStatus }
+                $endDate    = $item.End.ToString('dd-MM-yyyy')
+                $endTime    = $item.End.ToString('HH:mm')
+                $showAs     = if ($item.BusyStatus -eq 3) { 4 } else { $item.BusyStatus }
                 $zeilen.Add("`"$subject`",`"$startDate`",`"$startTime2`",`"$endDate`",`"$endTime`",`"$showAs`"")
                 $anzahl++
             }

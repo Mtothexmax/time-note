@@ -108,7 +108,7 @@ class CalendarStore {
             if (p.length < 3) return false;
             return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
         }).map(e => ({
-            booking: this.bookings[e.id],
+            booking: this.bookingDict[e.Subject] || this.bookings[e.id],
             dur: getDurationMin(e["Start Time"], e["End Time"]),
             title: e.Subject,
             ooo: e["Show time as"] === "4" || e.Subject.toLowerCase().includes("out of office") || e.Subject.toLowerCase().includes("ooo"),
