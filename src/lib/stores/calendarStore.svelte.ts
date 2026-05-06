@@ -161,6 +161,18 @@ class CalendarStore {
         window.dispatchEvent(new CustomEvent('time-note-data', { detail: data }));
     }
 
+    dispatchAllEventDates() {
+        if (!browser) return;
+        const dates = new Set<string>();
+        this.events.forEach(ev => {
+            const p = ev["Start Date"]?.split('-');
+            if (p?.length === 3) dates.add(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`);
+        });
+        Object.keys(this.manualMeetings).forEach(d => dates.add(d));
+        Object.keys(this.workData).forEach(d => dates.add(d));
+        dates.forEach(d => this.dispatchDayEvent(d));
+    }
+
     changeWeek(weeks: number) {
         const newDate = new Date(this.currentWeekStart);
         newDate.setDate(newDate.getDate() + (weeks * 7));

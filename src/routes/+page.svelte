@@ -160,6 +160,7 @@
         }
         calendarStore.bookingDict = obj;
         calendarStore.save();
+        calendarStore.dispatchAllEventDates();
     }
 
     function addDictEntry() {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Time-Note ZEP Integrator
 // @namespace    http://tampermonkey.net/
-// @version      3.2
+// @version      3.3
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
 // @match        https://mtothexmax.github.io/time-note/*
@@ -339,6 +339,62 @@
     }
 
     // ------------------------------------------------------------------
+    // Clipboard import — reads a single JSON entry and fills + saves it
+    // ------------------------------------------------------------------
+    async function runClipboardImport() {
+        LOG('Clipboard-Import gestartet');
+        const clipBtn = document.getElementById('tn-clipboard-btn');
+        if (clipBtn) clipBtn.disabled = true;
+
+        try {
+            const datum = getCurrentDate();
+            if (!datum) {
+                setStatus('Fehler: Datum nicht gefunden', 'error');
+                return;
+            }
+
+            let text;
+            try {
+                text = await navigator.clipboard.readText();
+            } catch {
+                setStatus('Fehler: Kein Clipboard-Zugriff', 'error');
+                return;
+            }
+
+            let eintrag;
+            try {
+                eintrag = JSON.parse(text);
+            } catch {
+                setStatus('Fehler: Kein gültiges JSON in Zwischenablage', 'error');
+                return;
+            }
+
+            if (!eintrag || typeof eintrag !== 'object') {
+                setStatus('Fehler: Ungültiges JSON-Format', 'error');
+                return;
+            }
+
+            setStatus('Importiere aus Zwischenablage ...');
+            LOG('Eintrag aus Clipboard:', eintrag);
+
+            await fillEntry(datum, eintrag);
+
+            const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
+            await sleep(2500);
+            clickSpeichern();
+            await saveWait;
+
+            setStatus('✓ Eintrag aus Zwischenablage gespeichert', 'success');
+            LOG('Clipboard-Eintrag gespeichert ✓');
+        } catch (err) {
+            LOG('FEHLER Clipboard-Import:', err);
+            setStatus('Fehler: ' + err.message, 'error');
+        } finally {
+            if (clipBtn) clipBtn.disabled = false;
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Button + status injection (survives ZEP card-footer re-renders)
     // ------------------------------------------------------------------
     function injectButton() {
@@ -362,6 +418,19 @@
             btn.addEventListener('click', runImport);
             saveBtn.parentElement.appendChild(btn);
             LOG('Import-Button eingefügt.');
+        }
+
+        if (!document.getElementById('tn-clipboard-btn')) {
+            const btn2 = document.createElement('input');
+            btn2.type = 'button';
+            btn2.id = 'tn-clipboard-btn';
+            btn2.value = 'JSON einfügen';
+            btn2.className = 'btn btn-secondary';
+            btn2.style.marginLeft = '0.5rem';
+            btn2.title = 'Einzelnen Eintrag aus JSON-Zwischenablage importieren';
+            btn2.addEventListener('click', runClipboardImport);
+            saveBtn.parentElement.appendChild(btn2);
+            LOG('Clipboard-Button eingefügt.');
         }
 
         if (!document.getElementById('tn-import-status')) {

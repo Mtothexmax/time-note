@@ -44,17 +44,17 @@
                 .map(m => ({ start: m.start, end: m.end }))
         ];
 
-        // Overlap between pause ranges and current session [arriveMin, nowMin]
+        // Overlap between pause ranges and current session [arriveMin, nowMin], capped at 23:59
         const fmt = (d: Date) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
         const arriveMin = toMinutes(fmt(arrive));
-        const nowMin    = toMinutes(fmt(current));
+        const nowMin    = Math.min(1439, toMinutes(fmt(current)));
         const pauseOverlap = pauseRanges.reduce((sum, p) => {
             const os = Math.max(toMinutes(p.start), arriveMin);
             const oe = Math.min(toMinutes(p.end),   nowMin);
             return sum + Math.max(0, oe - os);
         }, 0);
 
-        const totalMin = Math.max(0, prevMin + currentMin - pauseOverlap);
+        const totalMin = Math.min(1439, Math.max(0, prevMin + currentMin - pauseOverlap));
         const h = Math.floor(totalMin / 60);
         const m = Math.floor(totalMin % 60);
         return `${h}:${String(m).padStart(2, '0')}`;
