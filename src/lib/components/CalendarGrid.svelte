@@ -125,6 +125,7 @@
         dayColumn: number;
         booking?: string;
         onClick: () => void;
+        onBookingPaste: (b: string) => void;
         zIndex: number;
         overlapEvents: { title: string; time: string; date: string; style: string; onClick: () => void }[];
     };
@@ -136,7 +137,7 @@
             const d = days[i];
             const dStr = formatDate(d);
             const slots: { id: string; startMin: number; endMin: number }[] = [];
-            const eventMap = new Map<string, { start: string; end: string; title: string; style: string; booking?: string; onClick: () => void }>();
+            const eventMap = new Map<string, { start: string; end: string; title: string; style: string; booking?: string; onClick: () => void; onBookingPaste: (b: string) => void }>();
 
             // Work blocks
             (calendarStore.workData[dStr] || []).forEach((w, wi) => {
@@ -144,7 +145,7 @@
                 const sm = toMinutes(w.start), em = toMinutes(w.end);
                 if (!isNaN(sm) && !isNaN(em)) {
                     slots.push({ id, startMin: sm, endMin: em });
-                    eventMap.set(id, { start: w.start, end: w.end, title: `ARBEIT: ${w.booking || '?'}`, style: 'card-work', onClick: () => onOpenWork(dStr) });
+                    eventMap.set(id, { start: w.start, end: w.end, title: `ARBEIT: ${w.booking || '?'}`, style: 'card-work', onClick: () => onOpenWork(dStr), onBookingPaste: () => {} });
                 }
             });
 
@@ -157,7 +158,7 @@
                 if (!isNaN(sm) && !isNaN(em)) {
                     slots.push({ id, startMin: sm, endMin: em });
                     const style = isManualOOO ? 'card-ooo' : (m.booking ? 'card-booked' : 'card-manual');
-                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: m.booking, onClick: () => onOpenManual(dStr, m.id) });
+                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: m.booking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } } });
                 }
             });
 
@@ -178,7 +179,7 @@
                     const hasZNR = !!effectiveBooking;
                     const ooo = isOOO(ev.Subject, ev["Show time as"]);
                     const style = ooo ? 'card-ooo' : (isPause(ev.Subject) ? 'card-pause' : (hasZNR ? 'card-booked' : 'card-csv'));
-                    eventMap.set(id, { start: ev["Start Time"], end: ev["End Time"], title: ev.Subject, style, booking: effectiveBooking, onClick: () => onOpenMeeting(ev) });
+                    eventMap.set(id, { start: ev["Start Time"], end: ev["End Time"], title: ev.Subject, style, booking: effectiveBooking, onClick: () => onOpenMeeting(ev), onBookingPaste: (b: string) => { calendarStore.bookings[ev.id] = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
                 }
             });
 
@@ -217,6 +218,7 @@
                     dayColumn: i,
                     booking: info.booking,
                     onClick: info.onClick,
+                    onBookingPaste: info.onBookingPaste,
                     zIndex,
                     overlapEvents,
                 });
@@ -266,7 +268,7 @@
             {/each}
 
             {#each renderedEvents as ev (ev.id)}
-                <EventCard 
+                <EventCard
                     start={ev.start}
                     end={ev.end}
                     title={ev.title}
@@ -276,6 +278,7 @@
                     zIndex={ev.zIndex}
                     overlapEvents={ev.overlapEvents}
                     onclick={ev.onClick}
+                    onBookingPaste={ev.onBookingPaste}
                     {onOverlapMenu}
                 />
             {/each}

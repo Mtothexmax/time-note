@@ -1,14 +1,14 @@
 
 <script lang="ts">
-    import { getGridRow, getRowSpanCeil, getPreciseHeight, getDurationMin, formatDur, stripSeconds } from '$lib/utils/dateUtils';
-    import { Layers } from 'lucide-svelte';
+    import { getGridRow, getGridOffset, getPreciseHeight, getDurationMin, formatDur, stripSeconds } from '$lib/utils/dateUtils';
+    import { Layers, FileJson, ClipboardPaste } from 'lucide-svelte';
 
-    let { 
-        start, 
-        end, 
-        title, 
-        style, 
-        dayColumn, 
+    let {
+        start,
+        end,
+        title,
+        style,
+        dayColumn,
         booking,
         zIndex = 10,
         overlapEvents = [] as { title: string; time: string; date: string; style: string; onClick: () => void }[],
@@ -25,14 +25,56 @@
         overlapEvents?: { title: string; time: string; date: string; style: string; onClick: () => void }[];
         onclick: () => void;
         onOverlapMenu?: (events: { title: string; time: string; date: string; style: string; onClick: () => void }[], x: number, y: number) => void;
+        onBookingPaste?: (booking: string) => void;
     }>();
 
-    const startRow = $derived(getGridRow(start));
-    const rowSpan = $derived(getRowSpanCeil(start, end));
-    const cardPx = $derived(getPreciseHeight(start, end));
+    const startRow   = $derived(getGridRow(start));
+    const startOffset = $derived(getGridOffset(start));
+    const rowSpan    = $derived(Math.max(1, Math.ceil((startOffset + Math.max(15, getDurationMin(start, end))) / 30)));
+    const cardPx     = $derived(getPreciseHeight(start, end));
     const durationMin = $derived(getDurationMin(start, end));
     const durationDisplay = $derived(formatDur(durationMin));
     const hasOverlaps = $derived(overlapEvents.length > 0);
+
+    let ctxMenu = $state<{ x: number; y: number } | null>(null);
+
+    function openCtxMenu(e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        ctxMenu = { x: e.clientX, y: e.clientY };
+    }
+
+    function closeCtxMenu() {
+        ctxMenu = null;
+    }
+
+    function copyAsJSON() {
+        const parts = (booking || '').split(';');
+        const entry = {
+            Dauer: formatDur(durationMin),
+            Projekt: parts[0] || '',
+            Vorgang: parts[1] || '',
+            'Tätigkeit': parts[2] || '',
+            Bemerkung: parts[3] || ''
+        };
+        navigator.clipboard.writeText(JSON.stringify(entry, null, 2));
+        closeCtxMenu();
+    }
+
+    async function pasteBooking() {
+        try {
+            const text = await navigator.clipboard.readText();
+            const entry = JSON.parse(text);
+            const newBooking = [
+                entry.Projekt || '',
+                entry.Vorgang || '',
+                entry['Tätigkeit'] || '',
+                entry.Bemerkung || ''
+            ].join(';');
+            onBookingPaste?.(newBooking);
+        } catch {}
+        closeCtxMenu();
+    }
 
     function toggleMenu(e: MouseEvent) {
         e.stopPropagation();
@@ -42,11 +84,11 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div 
+<div
     class="event-card-wrapper"
-    style="grid-column: {dayColumn + 2}; grid-row: {startRow} / span {rowSpan}; z-index: {zIndex}; max-height: {cardPx}px"
+    style="grid-column: {dayColumn + 2}; grid-row: {startRow} / span {rowSpan}; z-index: {zIndex}; max-height: {cardPx}px; margin-top: {startOffset}px;"
 >
-    <div class="event-card {style}" onclick={onclick} title="{stripSeconds(start)} - {stripSeconds(end)}">
+    <div class="event-card {style}" onclick={onclick} oncontextmenu={openCtxMenu} title="{stripSeconds(start)} - {stripSeconds(end)}">
         <div class="font-bold truncate uppercase text-[9px]">{title}</div>
         <div class="text-[8px] opacity-60">{durationDisplay}h</div>
         {#if booking}
@@ -64,6 +106,37 @@
     {/if}
 
 </div>
+
+{#if ctxMenu}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 z-[9998]" onclick={closeCtxMenu}></div>
+    <div
+        class="fixed z-[9999] rounded-lg shadow-xl py-1 min-w-[180px]"
+        style="top: {ctxMenu.y}px; left: {ctxMenu.x}px; background: var(--bg-card); border: 1px solid var(--border-main);"
+    >
+        <div class="px-2 py-1 text-[9px] font-black uppercase tracking-wider truncate max-w-[200px]" style="color: var(--text-muted)">{title}</div>
+        <div style="border-top: 1px solid var(--border-main); margin: 2px 0;"></div>
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={copyAsJSON}
+        >
+            <FileJson size={11} /> Als JSON kopieren
+        </button>
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={pasteBooking}
+        >
+            <ClipboardPaste size={11} /> Buchungsnummer einfügen
+        </button>
+    </div>
+{/if}
 
 <style>
     .event-card-wrapper {
@@ -83,7 +156,7 @@
         min-width: 0;
     }
     .event-card:hover { z-index: 50 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
-    
+
     .overlap-indicator {
         position: absolute;
         top: 2px;
@@ -105,38 +178,6 @@
     }
     .overlap-count {
         font-weight: 700;
-    }
-    .overlap-menu-header {
-        padding: 6px 8px 4px;
-        font-size: 9px;
-        font-weight: 800;
-        text-transform: uppercase;
-        color: #94a3b8;
-        letter-spacing: 0.05em;
-    }
-    .overlap-menu-item {
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        width: 100%;
-        padding: 6px 8px;
-        border-radius: 6px;
-        border: none;
-        background: transparent;
-        text-align: left;
-        cursor: pointer;
-        font-size: 10px;
-    }
-    .overlap-menu-item:hover {
-        background: #f1f5f9;
-    }
-    .overlap-item-title {
-        font-size: 10px;
-        font-weight: 600;
-    }
-    .overlap-item-time {
-        font-size: 9px;
-        color: #64748b;
     }
 
     :global(.card-csv) { border-left-color: var(--card-csv-border); border-left-width: 5px; background: var(--card-csv-bg); color: var(--card-csv-text); border-left-style: solid; }

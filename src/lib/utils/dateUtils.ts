@@ -48,6 +48,13 @@ export function getGridRow(time: string): number {
     return (h * 2) + (m >= 30 ? 3 : 2);
 }
 
+// Pixel offset within the 30-min grid row (0 or 15 for quarter-hour starts)
+export function getGridOffset(time: string): number {
+    if (!time) return 0;
+    const [, m] = time.split(':').map(Number);
+    return m % 30;
+}
+
 export function getRowSpanCeil(start: string, end: string): number {
     const duration = getDurationMin(start, end);
     return Math.max(1, Math.ceil(Math.max(15, duration) / 30));

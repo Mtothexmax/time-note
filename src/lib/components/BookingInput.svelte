@@ -54,13 +54,27 @@
         style="background: var(--bg-card); border: 1px solid var(--border-main); top: 50%; left: 50%; transform: translate(-50%, -50%);"
     >
         <div class="text-[10px] font-bold uppercase mb-2" style="color: var(--text-muted)">Buchungsnummer</div>
-        <div class="space-y-2">
-            {#each labels as label, i}
-                <div>
-                    <label for="bf{i}" class="text-[9px] font-bold block mb-0.5" style="color: var(--text-secondary)">{label}</label>
-                    <input id="bf{i}" type="text" bind:value={fields[i]} class="w-full rounded p-1.5 text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
-                </div>
-            {/each}
+        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+            <!-- Projekt (col 1) | Tätigkeit (col 2) -->
+            <div>
+                <label for="bf0" class="text-[9px] font-bold block mb-0.5" style="color: var(--text-secondary)">Projekt</label>
+                <input id="bf0" type="text" bind:value={fields[0]} class="w-full rounded p-1.5 text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+            </div>
+            <div>
+                <label for="bf2" class="text-[9px] font-bold block mb-0.5" style="color: var(--text-secondary)">Tätigkeit</label>
+                <input id="bf2" type="text" bind:value={fields[2]} class="w-full rounded p-1.5 text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+            </div>
+            <!-- Vorgang (col 1, col 2 empty) -->
+            <div>
+                <label for="bf1" class="text-[9px] font-bold block mb-0.5" style="color: var(--text-secondary)">Vorgang</label>
+                <input id="bf1" type="text" bind:value={fields[1]} class="w-full rounded p-1.5 text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+            </div>
+            <div></div>
+            <!-- Bemerkung (full width) -->
+            <div style="grid-column: 1 / -1;">
+                <label for="bf3" class="text-[9px] font-bold block mb-0.5" style="color: var(--text-secondary)">Bemerkung</label>
+                <input id="bf3" type="text" bind:value={fields[3]} class="w-full rounded p-1.5 text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
+            </div>
         </div>
         <div class="flex gap-2 mt-3">
             <button onclick={() => popupOpen = false} class="flex-1 py-2 rounded-lg text-xs font-bold" style="background: var(--input-bg); color: var(--text-secondary)">Abbruch</button>

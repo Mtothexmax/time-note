@@ -2,23 +2,64 @@
 <script lang="ts">
     import { ChevronLeft, ChevronRight, Upload, Trash2, Play, Square, BookOpen, Info } from 'lucide-svelte';
     import { calendarStore } from '$lib/stores/calendarStore.svelte';
+    import { formatDate, getDurationMin, toMinutes, csvDateToISO } from '$lib/utils/dateUtils';
     import InfoModal from './InfoModal.svelte';
 
     let { onOpenBookingDict } = $props<{ onOpenBookingDict?: () => void }>();
     let infoOpen = $state(false);
+
+    // Ticks every 30s so the counter stays live
+    let now = $state(Date.now());
+    $effect(() => {
+        const id = setInterval(() => { now = Date.now(); }, 30000);
+        return () => clearInterval(id);
+    });
 
     const weekRange = $derived.by(() => {
         const s = calendarStore.currentWeekStart;
         const e = new Date(s.getTime() + 6 * 86400000);
         return `${s.getDate()}.${s.getMonth() + 1}. – ${e.getDate()}.${e.getMonth() + 1}.${e.getFullYear()}`;
     });
+
     const checkInElapsed = $derived.by(() => {
         if (!calendarStore.checkIn) return null;
-        const diff = Date.now() - new Date(calendarStore.checkIn).getTime();
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
+        const arrive = new Date(calendarStore.checkIn);
+        const current = new Date(now);
+        const today = formatDate(current);
+
+        // Accumulated minutes from previous check-out sessions today
+        const prevMin = (calendarStore.workData[today] || [])
+            .reduce((acc, w) => acc + getDurationMin(w.start, w.end), 0);
+
+        // Current session in minutes
+        const currentMin = (current.getTime() - arrive.getTime()) / 60000;
+
+        // Pause events for today
+        const pauseRanges = [
+            ...calendarStore.events
+                .filter(ev => csvDateToISO(ev["Start Date"]) === today && ev.Subject.toLowerCase().includes('pause'))
+                .map(e => ({ start: e["Start Time"], end: e["End Time"] })),
+            ...(calendarStore.manualMeetings[today] || [])
+                .filter(m => m.subject.toLowerCase().includes('pause'))
+                .map(m => ({ start: m.start, end: m.end }))
+        ];
+
+        // Overlap between pause ranges and current session [arriveMin, nowMin]
+        const fmt = (d: Date) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        const arriveMin = toMinutes(fmt(arrive));
+        const nowMin    = toMinutes(fmt(current));
+        const pauseOverlap = pauseRanges.reduce((sum, p) => {
+            const os = Math.max(toMinutes(p.start), arriveMin);
+            const oe = Math.min(toMinutes(p.end),   nowMin);
+            return sum + Math.max(0, oe - os);
+        }, 0);
+
+        const totalMin = Math.max(0, prevMin + currentMin - pauseOverlap);
+        const h = Math.floor(totalMin / 60);
+        const m = Math.floor(totalMin % 60);
         return `${h}:${String(m).padStart(2, '0')}`;
     });
+
     const checkInArrival = $derived(calendarStore.checkIn
         ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
         : null);

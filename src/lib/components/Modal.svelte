@@ -30,7 +30,7 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div 
             class="p-6 rounded-3xl shadow-2xl w-full max-w-md"
-            style="background: var(--bg-card); border-color: var(--border-main)"
+            style="background: var(--bg-card); border: 1px solid var(--border-main);"
             onclick={(e) => e.stopPropagation()}
             transition:scale={{ duration: 200, start: 0.95 }}
         >

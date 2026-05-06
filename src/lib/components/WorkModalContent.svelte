@@ -34,18 +34,22 @@
 <div class="space-y-4">
     <div class="space-y-2">
         {#each localIntervals as interval, i}
-            <div class="flex gap-2 items-center p-2 rounded-xl" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border)">
-                <TimePicker value={interval.start} onChange={(v) => interval.start = v} />
-                <TimePicker value={interval.end} onChange={(v) => interval.end = v} />
-                <div class="flex-1 min-w-0">
-                    <BookingInput value={interval.booking} onChange={(v) => interval.booking = v} />
+            <div class="p-2 rounded-xl space-y-1.5" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border)">
+                <div class="flex gap-2 items-center">
+                    <TimePicker value={interval.start} onChange={(v) => interval.start = v} />
+                    <TimePicker value={interval.end} onChange={(v) => interval.end = v} />
+                    <button onclick={() => removeInterval(i)} class="ml-auto shrink-0 p-1 transition-colors" style="color: var(--text-muted)">
+                        <Trash2 size={12} />
+                    </button>
                 </div>
-                <button onclick={() => copyBookingToAll(i)} class="transition-colors" style="color: var(--text-muted)" title="Buchungsnummer auf alle Intervalle kopieren">
-                    <Copy size={12} />
-                </button>
-                <button onclick={() => removeInterval(i)} class="transition-colors" style="color: var(--text-muted)">
-                    <Trash2 size={12} />
-                </button>
+                <div class="flex gap-1 items-center">
+                    <div class="flex-1 min-w-0">
+                        <BookingInput value={interval.booking} onChange={(v) => interval.booking = v} />
+                    </div>
+                    <button onclick={() => copyBookingToAll(i)} class="shrink-0 p-1 transition-colors" style="color: var(--text-muted)" title="Buchungsnummer auf alle Intervalle kopieren">
+                        <Copy size={12} />
+                    </button>
+                </div>
             </div>
         {/each}
     </div>
