@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Time-Note ZEP Integrator
 // @namespace    http://tampermonkey.net/
-// @version      3.3
+// @version      3.6
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
 // @match        https://mtothexmax.github.io/time-note/*
@@ -71,11 +71,15 @@
 
     // ------------------------------------------------------------------
     // Inline status display (survives ZEP re-renders via _status closure)
+    // Errors lock the display until a button is pressed again.
     // ------------------------------------------------------------------
     let _status = { msg: '', type: 'info' };
+    let _statusLocked = false;
 
     function setStatus(msg, type = 'info') {
+        if (_statusLocked) return;
         _status = { msg, type };
+        if (type === 'error') _statusLocked = true;
         const el = document.getElementById('tn-import-status');
         if (!el) return;
         el.textContent = msg;
@@ -190,8 +194,11 @@
     }
 
     // ------------------------------------------------------------------
-    // Set the Dauer field — no 'change' event; ZEP's timeEntry plugin
-    // would overwrite the value and produce NaN
+    // Set the Dauer field.
+    // ZEP validates the hidden 'Dauerhelp' field (minutes integer) on submit,
+    // not the #dauer display input directly. The timeEntry plugin normally
+    // fills Dauerhelp on blur/change, but we skip that event to avoid NaN.
+    // We set Dauerhelp explicitly instead.
     // ------------------------------------------------------------------
     function setDauer(value) {
         const el = document.getElementById('dauer');
@@ -200,10 +207,27 @@
         LOG(`Setze Dauer: ${normalized}`);
         el.value = normalized;
         el.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const parts = normalized.split(':').map(Number);
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            const totalMin = parts[0] * 60 + parts[1];
+            const helper = document.getElementById('dauerhelp')
+                || document.querySelector('[name="Dauerhelp"]')
+                || document.querySelector('[name="dauerhelp"]');
+            if (helper) {
+                helper.value = String(totalMin);
+                LOG(`Dauerhelp gesetzt: ${totalMin} min`);
+            } else {
+                LOG('WARN: Dauerhelp-Feld nicht gefunden');
+            }
+        }
     }
 
     // ------------------------------------------------------------------
-    // Fill one entry into the ZEP form
+    // Fill the cascade dropdowns only (Projekt → Vorgang → Tätigkeit).
+    // Dauer and Bemerkung are NOT set here — they must be set AFTER this
+    // function returns and an extra sleep has been observed, because ZEP's
+    // AJAX refresh triggered by each dropdown wipes those fields.
     // ------------------------------------------------------------------
     async function fillEntry(datum, eintrag) {
         await setDate(datum);
@@ -214,7 +238,6 @@
             if (!sel) throw new Error('Projekt-Dropdown (#projektId) nicht gefunden');
             if (!setSelect(sel, eintrag.Projekt))
                 throw new Error('Projekt nicht gefunden: "' + eintrag.Projekt + '"');
-            // Wait for ZEP's AJAX refresh to start loading the Vorgang list
             await sleep(800);
             if (eintrag.Vorgang)
                 await waitForOption('vorgangId', eintrag.Vorgang);
@@ -236,9 +259,14 @@
             if (sel && !setSelect(sel, eintrag['Tätigkeit']))
                 throw new Error('Tätigkeit nicht gefunden: "' + eintrag['Tätigkeit'] + '"');
         }
+        // Return immediately — caller waits before setting Dauer/Bemerkung.
+    }
 
+    // ------------------------------------------------------------------
+    // Set Dauer and Bemerkung — called AFTER cascade AJAX has settled.
+    // ------------------------------------------------------------------
+    function setFinalFields(eintrag) {
         if (eintrag.Dauer) setDauer(eintrag.Dauer);
-
         if (typeof eintrag.Bemerkung === 'string') {
             LOG(`Setze Bemerkung: ${eintrag.Bemerkung}`);
             const el = document.getElementById('bemerkung');
@@ -247,8 +275,6 @@
                 el.dispatchEvent(new Event('input', { bubbles: true }));
             }
         }
-
-        await sleep(200);
     }
 
     // ------------------------------------------------------------------
@@ -274,6 +300,7 @@
     // ------------------------------------------------------------------
     async function runImport() {
         LOG('Import gestartet');
+        _statusLocked = false;
         const importBtn = document.getElementById('tn-import-btn');
         if (importBtn) importBtn.disabled = true;
 
@@ -314,9 +341,13 @@
 
                 try {
                     await fillEntry(datum, eintrag);
+                    // Wait for all cascade AJAX to settle before writing Dauer/Bemerkung.
+                    await sleep(1500);
+                    setFinalFields(eintrag);
+                    await sleep(300);
 
                     const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
-                    await sleep(2500);
+                    await sleep(300);
                     clickSpeichern();
                     await saveWait;
 
@@ -343,6 +374,7 @@
     // ------------------------------------------------------------------
     async function runClipboardImport() {
         LOG('Clipboard-Import gestartet');
+        _statusLocked = false;
         const clipBtn = document.getElementById('tn-clipboard-btn');
         if (clipBtn) clipBtn.disabled = true;
 
@@ -374,13 +406,49 @@
                 return;
             }
 
+            // Full day export: {Datum, Einträge: [...]}
+            if (Array.isArray(eintrag.Einträge) && eintrag.Einträge.length) {
+                LOG('Clipboard enthält Tages-Export mit', eintrag.Einträge.length, 'Einträgen');
+                const entries = eintrag.Einträge;
+                const n = entries.length;
+                let saved = 0;
+                for (let i = 0; i < n; i++) {
+                    const e = entries[i];
+                    setStatus(`Importiere ${i + 1}/${n} ...`);
+                    LOG(`--- Eintrag ${i + 1}/${n} ---`);
+                    try {
+                        await fillEntry(datum, e);
+                        await sleep(1500);
+                        setFinalFields(e);
+                        await sleep(300);
+                        const saveWait = waitForSave(e.Bemerkung || '', 15000);
+                        await sleep(300);
+                        clickSpeichern();
+                        await saveWait;
+                        saved++;
+                        setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
+                        await sleep(500);
+                    } catch (err) {
+                        LOG(`FEHLER Eintrag ${i + 1}:`, err);
+                        setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${err.message}`, 'error');
+                        return;
+                    }
+                }
+                setStatus(`✓ ${saved} von ${n} Einträgen gespeichert`, 'success');
+                return;
+            }
+
+            // Single entry: {Dauer, Projekt, Vorgang, Tätigkeit, Bemerkung}
             setStatus('Importiere aus Zwischenablage ...');
             LOG('Eintrag aus Clipboard:', eintrag);
 
             await fillEntry(datum, eintrag);
+            await sleep(1500);
+            setFinalFields(eintrag);
+            await sleep(300);
 
             const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
-            await sleep(2500);
+            await sleep(300);
             clickSpeichern();
             await saveWait;
 

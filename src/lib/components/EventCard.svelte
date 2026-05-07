@@ -13,7 +13,8 @@
         zIndex = 10,
         overlapEvents = [] as { title: string; time: string; date: string; style: string; onClick: () => void }[],
         onclick,
-        onOverlapMenu
+        onOverlapMenu,
+        onBookingPaste
     } = $props<{
         start: string;
         end: string;
@@ -124,7 +125,7 @@
             onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             onclick={copyAsJSON}
         >
-            <FileJson size={11} /> Als JSON kopieren
+            <FileJson size={11} /> Kopieren
         </button>
         <button
             class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
@@ -133,7 +134,7 @@
             onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             onclick={pasteBooking}
         >
-            <ClipboardPaste size={11} /> Buchungsnummer einfügen
+            <ClipboardPaste size={11} /> Einfügen
         </button>
     </div>
 {/if}
