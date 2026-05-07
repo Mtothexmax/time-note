@@ -4,7 +4,7 @@ import{$ as e,A as t,B as n,C as r,D as i,E as a,F as o,G as s,I as c,J as l,K a
 		`}}var Ae=A(`<div role="dialog" tabindex="-1" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-4"><div class="p-6 rounded-3xl shadow-2xl w-full max-w-md" style="background: var(--bg-card); border: 1px solid var(--border-main);"><div class="flex justify-between items-start mb-4"><h3 class="text-xl font-bold"> </h3> <button class="transition-colors" style="color: var(--text-muted)"><!></button></div> <!></div></div>`);function je(t,r){e(r,!0);function o(e){e.key===`Escape`&&r.onClose()}var c=p(),l=b(c),u=e=>{var t=Ae(),c=v(t),l=v(c),u=v(l),d=v(u,!0);L(u);var p=s(u,2);ge(v(p),{size:24}),L(p),L(l),te(s(l,2),()=>r.children),L(c),L(t),n(()=>a(d,r.title)),f(`keydown`,t,o),f(`click`,c,e=>e.stopPropagation()),f(`click`,p,function(...e){r.onClose?.apply(this,e)}),m(`mouseenter`,p,e=>e.target.style.color=`var(--text-secondary)`),m(`mouseleave`,p,e=>e.target.style.color=`var(--text-muted)`),U(3,c,()=>ke,()=>({duration:200,start:.95})),U(3,t,()=>Oe,()=>({duration:200})),i(e,t)};_(l,e=>{r.isOpen&&e(u)}),i(t,c),h()}d([`keydown`,`click`]);var Me=A(`<div class="code-block" style="background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; overflow: hidden;"><div class="flex items-center justify-between px-3 py-1.5" style="background: var(--border-main);"><span class="text-[10px] font-bold uppercase" style="color: var(--text-muted)"> </span> <button class="text-[9px] font-bold px-2 py-0.5 rounded transition-colors" style="color: var(--text-muted); background: var(--input-bg);"> </button></div> <pre class="m-0 p-3 overflow-x-auto text-xs font-mono leading-relaxed" style="color: var(--text-primary); max-height: 300px; overflow-y: auto;"><code> </code></pre></div>`);function Ne(e,t){let r=S(t,`language`,3,``),o=l(!1);async function u(){try{await navigator.clipboard.writeText(t.code)}catch{let e=document.createElement(`textarea`);e.value=t.code,document.body.appendChild(e),e.select(),document.execCommand(`copy`),document.body.removeChild(e)}I(o,!0),setTimeout(()=>I(o,!1),1500)}var d=Me(),p=v(d),m=v(p),h=v(m,!0);L(m);var g=s(m,2),_=v(g,!0);L(g),L(p);var y=s(p,2),b=v(y),x=v(b,!0);L(b),L(y),L(d),n(()=>{a(h,r()||`Code`),a(_,c(o)?`Kopiert!`:`Kopieren`),a(x,t.code)}),f(`click`,g,u),i(e,d)}d([`click`]);var Pe=`// ==UserScript==\r
 // @name         Time-Note ZEP Integrator\r
 // @namespace    http://tampermonkey.net/\r
-// @version      3.6\r
+// @version      3.7\r
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein\r
 // @author       Time-Note\r
 // @match        https://mtothexmax.github.io/time-note/*\r
@@ -281,6 +281,34 @@ import{$ as e,A as t,B as n,C as r,D as i,E as a,F as o,G as s,I as c,J as l,K a
     }\r
 \r
     // ------------------------------------------------------------------\r
+    // Copy current form state as JSON (same format as EventCard export)\r
+    // ------------------------------------------------------------------\r
+    function copyCurrentAsJSON() {\r
+        try {\r
+            const readField = (id) => {\r
+                const el = document.getElementById(id);\r
+                if (!el) return '';\r
+                if (el.tagName === 'SELECT') return el.selectedOptions[0]?.text?.trim() || '';\r
+                return el.value?.trim() || '';\r
+            };\r
+\r
+            const entry = {\r
+                Dauer:       readField('dauer'),\r
+                Projekt:     readField('projektId'),\r
+                Vorgang:     readField('vorgangId'),\r
+                'Tätigkeit': readField('taetigkeit'),\r
+                Bemerkung:   readField('bemerkung')\r
+            };\r
+\r
+            navigator.clipboard.writeText(JSON.stringify(entry, null, 2));\r
+            setStatus('JSON kopiert ✓', 'success');\r
+            LOG('JSON kopiert:', entry);\r
+        } catch (err) {\r
+            setStatus('Fehler beim Kopieren: ' + err.message, 'error');\r
+        }\r
+    }\r
+\r
+    // ------------------------------------------------------------------\r
     // Click Speichern — native .click() fires the browser's form-submit\r
     // ------------------------------------------------------------------\r
     function clickSpeichern() {\r
@@ -502,6 +530,19 @@ import{$ as e,A as t,B as n,C as r,D as i,E as a,F as o,G as s,I as c,J as l,K a
             btn2.addEventListener('click', runClipboardImport);\r
             saveBtn.parentElement.appendChild(btn2);\r
             LOG('Clipboard-Button eingefügt.');\r
+        }\r
+\r
+        if (!document.getElementById('tn-copy-btn')) {\r
+            const btn3 = document.createElement('input');\r
+            btn3.type = 'button';\r
+            btn3.id = 'tn-copy-btn';\r
+            btn3.value = 'JSON kopieren';\r
+            btn3.className = 'btn btn-secondary';\r
+            btn3.style.marginLeft = '0.5rem';\r
+            btn3.title = 'Aktuellen Eintrag als JSON kopieren';\r
+            btn3.addEventListener('click', copyCurrentAsJSON);\r
+            saveBtn.parentElement.appendChild(btn3);\r
+            LOG('Kopieren-Button eingefügt.');\r
         }\r
 \r
         if (!document.getElementById('tn-import-status')) {\r

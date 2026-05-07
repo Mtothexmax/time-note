@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Time-Note ZEP Integrator
 // @namespace    http://tampermonkey.net/
-// @version      3.6
+// @version      3.7
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
 // @match        https://mtothexmax.github.io/time-note/*
@@ -278,6 +278,34 @@
     }
 
     // ------------------------------------------------------------------
+    // Copy current form state as JSON (same format as EventCard export)
+    // ------------------------------------------------------------------
+    function copyCurrentAsJSON() {
+        try {
+            const readField = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return '';
+                if (el.tagName === 'SELECT') return el.selectedOptions[0]?.text?.trim() || '';
+                return el.value?.trim() || '';
+            };
+
+            const entry = {
+                Dauer:       readField('dauer'),
+                Projekt:     readField('projektId'),
+                Vorgang:     readField('vorgangId'),
+                'Tätigkeit': readField('taetigkeit'),
+                Bemerkung:   readField('bemerkung')
+            };
+
+            navigator.clipboard.writeText(JSON.stringify(entry, null, 2));
+            setStatus('JSON kopiert ✓', 'success');
+            LOG('JSON kopiert:', entry);
+        } catch (err) {
+            setStatus('Fehler beim Kopieren: ' + err.message, 'error');
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Click Speichern — native .click() fires the browser's form-submit
     // ------------------------------------------------------------------
     function clickSpeichern() {
@@ -499,6 +527,19 @@
             btn2.addEventListener('click', runClipboardImport);
             saveBtn.parentElement.appendChild(btn2);
             LOG('Clipboard-Button eingefügt.');
+        }
+
+        if (!document.getElementById('tn-copy-btn')) {
+            const btn3 = document.createElement('input');
+            btn3.type = 'button';
+            btn3.id = 'tn-copy-btn';
+            btn3.value = 'JSON kopieren';
+            btn3.className = 'btn btn-secondary';
+            btn3.style.marginLeft = '0.5rem';
+            btn3.title = 'Aktuellen Eintrag als JSON kopieren';
+            btn3.addEventListener('click', copyCurrentAsJSON);
+            saveBtn.parentElement.appendChild(btn3);
+            LOG('Kopieren-Button eingefügt.');
         }
 
         if (!document.getElementById('tn-import-status')) {
