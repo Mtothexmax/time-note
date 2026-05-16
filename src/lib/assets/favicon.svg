@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+
+<svg
+   width="800px"
+   height="800px"
+   viewBox="0 0 64 64"
+   version="1.1"
+   id="svg5"
+   sodipodi:docname="favicon.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs5" />
+  <sodipodi:namedview
+     id="namedview5"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.2765625"
+     inkscape:cx="-341.69491"
+     inkscape:cy="1010.6215"
+     inkscape:window-width="1920"
+     inkscape:window-height="1129"
+     inkscape:window-x="5032"
+     inkscape:window-y="193"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg5" />
+  <g
+     fill="none"
+     fill-rule="evenodd"
+     id="g5"
+     transform="matrix(1.3471186,0,0,1,-10.760678,0)">
+    <path
+       fill="#ececec"
+       d="m 18,7 c 0,14.911688 8.243953,27 13,27 4.756047,0 13,-12.088312 13,-27 z"
+       id="path1" />
+    <path
+       fill="#ececec"
+       d="m 18,31 c 0,14.911688 8.243953,27 13,27 4.756047,0 13,-12.088312 13,-27 z"
+       transform="matrix(1,0,0,-1,0,89)"
+       id="path2" />
+    <path
+       fill="#ffdd95"
+       d="m 20,42 c 0,8.836556 6.975653,16 11,16 4.024347,0 11,-7.163444 11,-16 z"
+       transform="matrix(1,0,0,-1,0,100)"
+       id="path3" />
+    <path
+       fill="#ffdd95"
+       d="m 24,20 c 0,5.522847 4.439052,10 7,10 2.560948,0 7,-4.477153 7,-10 z"
+       transform="matrix(-1,0,0,1,62,0)"
+       id="path4" />
+    <rect
+       width="30"
+       height="3"
+       x="16"
+       y="4"
+       fill="#ffaf40"
+       rx="1"
+       id="rect4" />
+    <rect
+       width="30"
+       height="3"
+       x="16"
+       y="58"
+       fill="#ffaf40"
+       rx="1"
+       id="rect5" />
+  </g>
+</svg>

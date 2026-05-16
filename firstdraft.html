@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Time-Note 2026 - Sanierte Version</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+            grid-template-rows: 60px repeat(48, 30px); /* 30 min Schritte für 24h */
+            position: relative;
+        }
+        .time-label { grid-column: 1; text-align: right; padding-right: 12px; font-size: 0.65rem; color: #94a3b8; display: flex; align-items: center; justify-content: flex-end; border-bottom: 1px solid #f1f5f9; }
+        .day-header { grid-row: 1; border-bottom: 2px solid #e2e8f0; text-align: center; background: #f8fafc; padding: 8px; position: sticky; top: 0; z-index: 40; }
+        .grid-cell { border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+        
+        .event-card {
+            z-index: 10; margin: 1px; border-radius: 4px; padding: 4px; font-size: 0.7rem; line-height: 1.1;
+            cursor: pointer; border-left-width: 4px; overflow: hidden;
+            display: flex; flex-direction: column; position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        /* Stapel-Effekt bei Überlappung */
+        .event-card:nth-child(2n) { margin-left: 10px; z-index: 11; }
+        .event-card:nth-child(3n) { margin-left: 20px; z-index: 12; }
+        .event-card:hover { z-index: 50 !important; transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        .card-csv { border-left-color: #10b981; background-color: #ecfdf5; color: #065f46; } /* Grün */
+        .card-manual { border-left-color: #14b8a6; background-color: #f0fdfa; color: #134e4a; } /* Teal-Grün */
+        .card-booked { border-left-color: #0ea5e9; background-color: #e0f2fe; color: #0c4a6e; font-weight: 600; } /* Blau */
+        .card-work { border-left-color: #6366f1; background-color: #eef2ff; color: #3730a3; border-style: dashed; } /* Indigo */
+        .card-ooo { opacity: 0.3; background-color: #f1f5f9; border-left-color: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+<div class="max-w-[1600px] mx-auto p-4">
+    <header class="flex flex-wrap justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 gap-4">
+        <div class="flex items-center gap-6">
+            <div>
+                <h1 class="text-xl font-black text-indigo-600 tracking-tighter uppercase">Time-Note</h1>
+                <p class="text-xs text-slate-400 font-bold" id="currentMonthDisplay"></p>
+            </div>
+            <label class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200">
+                <input type="checkbox" id="showOOOCheckbox" onchange="updateDisplay()" class="w-4 h-4 text-indigo-600 rounded">
+                <span class="text-xs font-bold text-slate-600">OOO ausblenden</span>
+            </label>
+        </div>
+        
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            <button onclick="changeWeek(-1)" class="p-2 hover:bg-white rounded-lg transition"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+            <button onclick="goToToday()" class="px-4 py-2 hover:bg-white rounded-lg font-bold text-xs transition uppercase">Heute</button>
+            <button onclick="changeWeek(1)" class="p-2 hover:bg-white rounded-lg transition"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="flex gap-2">
+            <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+            <label for="csvInput" class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition text-xs font-bold">
+                <i data-lucide="upload" class="w-4 h-4"></i> CSV
+            </label>
+            <button onclick="clearAll()" class="p-2 text-slate-300 hover:text-red-500 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+    </header>
+
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        <div class="calendar-grid" id="calendarGrid">
+            </div>
+    </div>
+</div>
+
+<div id="mainModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+    <div class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100">
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-xl font-bold" id="modalTitle">Details</h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"></i></button>
+        </div>
+        <div id="meetingFields" class="hidden space-y-4">
+            <div id="manualInputs" class="hidden grid grid-cols-2 gap-2 mb-4">
+                <input type="time" id="mStart" class="bg-slate-50 border p-2 rounded-xl text-sm">
+                <input type="time" id="mEnd" class="bg-slate-50 border p-2 rounded-xl text-sm">
+                <input type="text" id="mSubject" placeholder="Titel" class="col-span-2 bg-slate-50 border p-2 rounded-xl text-sm font-bold">
+            </div>
+            <p id="meetingTimeInfo" class="text-[10px] font-bold text-indigo-500 uppercase"></p>
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Buchungsnummer (ZNR)</label>
+                <input type="text" id="bookingInput" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 outline-none focus:border-indigo-500 font-mono" placeholder="P00000">
+            </div>
+            <button id="deleteMeetingBtn" onclick="deleteManualMeeting()" class="hidden w-full text-red-500 text-xs font-bold py-2 border border-red-100 rounded-xl hover:bg-red-50">Meeting löschen</button>
+        </div>
+        <div id="workFields" class="hidden space-y-4">
+            <div id="workIntervalsList" class="space-y-2"></div>
+            <button onclick="addWorkIntervalRow()" class="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:border-indigo-300 transition">+ Intervall</button>
+        </div>
+        <div class="flex gap-2 mt-6">
+            <button onclick="closeModal()" class="flex-1 px-4 py-3 bg-slate-100 rounded-xl font-bold text-slate-500 text-sm">Abbruch</button>
+            <button onclick="saveAll()" class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentWeekStart = null;
+    let events = [], bookings = {}, workData = {}, manualMeetings = {};
+    let activeDayStr = null, activeEventId = null, isManualMode = false;
+
+    // --- DATUM LOGIK (FIX FÜR VERSCHIEBUNG) ---
+    function getMonday(d) {
+        let date = new Date(d);
+        date.setHours(12, 0, 0, 0);
+        let day = date.getDay();
+        let diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        let mon = new Date(date.setDate(diff));
+        mon.setHours(0, 0, 0, 0);
+        return mon;
+    }
+
+    function init() {
+        events = JSON.parse(localStorage.getItem('wf_events') || '[]');
+        bookings = JSON.parse(localStorage.getItem('wf_bookings') || '{}');
+        workData = JSON.parse(localStorage.getItem('wf_work') || '{}');
+        manualMeetings = JSON.parse(localStorage.getItem('wf_manual') || '{}');
+        createBaseGrid();
+        goToToday();
+    }
+
+    function createBaseGrid() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '<div class="grid-cell bg-slate-50/50"></div>';
+        for (let h = 0; h < 24; h++) {
+            for (let m of ['00', '30']) {
+                const row = (h * 2 + 2);
+                const lbl = document.createElement('div');
+                lbl.className = 'time-label';
+                lbl.style.gridRow = row; 
+                lbl.innerText = `${h}:${m}`;
+                grid.appendChild(lbl);
+                for (let d = 0; d < 7; d++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.style.gridRow = row; 
+                    cell.style.gridColumn = d + 2;
+                    grid.appendChild(cell);
+                }
+            }
+        }
+    }
+
+    function updateDisplay() {
+        const grid = document.getElementById('calendarGrid');
+        grid.querySelectorAll('.day-header').forEach(e => e.remove());
+        grid.querySelectorAll('.event-card').forEach(e => e.remove());
+
+        const hideOOO = document.getElementById('showOOOCheckbox').checked;
+
+        for (let i = 0; i < 7; i++) {
+            let d = new Date(currentWeekStart);
+            d.setDate(d.getDate() + i);
+            const dStr = d.toISOString().split('T')[0];
+            const names = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
+            
+            const head = document.createElement('div');
+            head.className = 'day-header';
+            head.style.gridColumn = i + 2;
+            head.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <span class="text-[10px] font-black text-slate-500 uppercase">${names[i]} ${d.getDate()}.${d.getMonth()+1}.</span>
+                    <div class="flex gap-1">
+                        <button id="copy-btn-${dStr}" onclick="copyDayToClipboard('${dStr}')" class="p-1 hover:bg-emerald-100 rounded transition-colors"><i data-lucide="copy" class="w-3 h-3"></i></button>
+                        <button onclick="openManualMeetingModal('${dStr}')" class="p-1 hover:bg-teal-100 rounded"><i data-lucide="calendar-plus" class="w-3 h-3 text-teal-600"></i></button>
+                        <button onclick="openWorkModal('${dStr}')" class="p-1 hover:bg-indigo-100 rounded"><i data-lucide="plus" class="w-3 h-3 text-indigo-600"></i></button>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(head);
+
+            // Render Work Blocks
+            (workData[dStr] || []).forEach(w => {
+                const card = createCard(w.start, w.end, `ARBEIT: ${w.booking || '?'}`, 'card-work', i);
+                card.onclick = () => openWorkModal(dStr);
+                grid.appendChild(card);
+            });
+
+            // Render Manual Meetings
+            (manualMeetings[dStr] || []).forEach(m => {
+                const hasZNR = !!m.booking;
+                const card = createCard(m.start, m.end, m.subject, hasZNR ? 'card-booked' : 'card-manual', i);
+                if (hasZNR) card.innerHTML += `<div class="mt-auto font-mono text-[8px] bg-white/40 px-1 rounded truncate">#${m.booking}</div>`;
+                card.onclick = () => editManualMeeting(dStr, m.id);
+                grid.appendChild(card);
+            });
+        }
+
+        // Render CSV Meetings
+        events.forEach(ev => {
+            const dateParts = ev["Start Date"].split('-');
+            const dStr = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+            const diff = Math.round((new Date(dStr + 'T12:00:00') - currentWeekStart) / 86400000);
+            
+            if (diff >= 0 && diff < 7) {
+                const isOOO = ev["Show time as"] === "4" || ev.Subject.toLowerCase().includes("out of office");
+                if (isOOO && hideOOO) return;
+
+                const hasZNR = !!bookings[ev.id];
+                let style = isOOO ? 'card-ooo' : (hasZNR ? 'card-booked' : 'card-csv');
+                if (ev.Subject.toLowerCase().includes("pause")) style = 'bg-orange-50 text-orange-600 border-orange-200 border-l-orange-400';
+
+                const card = createCard(ev["Start Time"], ev["End Time"], ev.Subject, style, diff);
+                if (hasZNR) card.innerHTML += `<div class="mt-auto font-mono text-[8px] bg-white/40 px-1 rounded truncate">#${bookings[ev.id]}</div>`;
+                card.onclick = () => openMeetingModal(ev);
+                grid.appendChild(card);
+            }
+        });
+
+        document.getElementById('currentMonthDisplay').innerText = `WOCHE VOM ${currentWeekStart.toLocaleDateString('de-DE')}`;
+        lucide.createIcons();
+    }
+
+    function createCard(s, e, title, style, dayDiff) {
+        if(!s || !e) return document.createElement('div');
+        let [h, m] = s.split(':').map(Number);
+        let [eh, em] = e.split(':').map(Number);
+        
+        const startRow = (h * 2) + (m >= 30 ? 3 : 2);
+        const durMin = (eh * 60 + em) - (h * 60 + m);
+        const rowSpan = Math.max(1, Math.round(durMin / 30));
+
+        const card = document.createElement('div');
+        card.className = `event-card ${style}`;
+        card.style.gridColumn = dayDiff + 2;
+        card.style.gridRow = `${startRow} / span ${rowSpan}`;
+        card.innerHTML = `<div class="font-bold truncate uppercase text-[9px]">${title}</div><div class="text-[8px] opacity-60">${s}-${e}</div>`;
+        return card;
+    }
+
+    // --- CLIPBOARD FIX ---
+    function copyDayToClipboard(dateStr) {
+        let totalWorkMin = (workData[dateStr] || []).reduce((acc, curr) => acc + getDurationMin(curr.start, curr.end), 0);
+        let lines = [];
+        let accountedMin = 0;
+
+        const dayMeetings = [
+            ...events.filter(ev => {
+                const p = ev["Start Date"].split('-');
+                return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
+            }).map(e => ({ 
+                booking: bookings[e.id], 
+                dur: getDurationMin(e["Start Time"], e["End Time"]), 
+                title: e.Subject,
+                ooo: e["Show time as"] === "4" || e.Subject.toLowerCase().includes("out of office"), 
+                pause: e.Subject.toLowerCase().includes("pause") 
+            })),
+            ...(manualMeetings[dateStr] || []).map(m => ({ 
+                booking: m.booking, 
+                dur: getDurationMin(m.start, m.end), 
+                title: m.subject,
+                ooo: false, 
+                pause: m.subject.toLowerCase().includes("pause") 
+            }))
+        ];
+
+        dayMeetings.forEach(m => {
+            if (m.booking && !m.ooo && !m.pause) {
+                const rounded = Math.round(m.dur / 15) * 15;
+                if (rounded > 0) {
+                    lines.push(`${formatDur(rounded)} ${m.booking} (${m.title})`);
+                    accountedMin += rounded;
+                }
+            }
+        });
+
+        const workZNR = (workData[dateStr] || []).find(w => w.booking)?.booking || "PRÄSENZ";
+        const pauseMin = dayMeetings.filter(m => m.pause).reduce((a, c) => a + c.dur, 0);
+        let remainingMin = Math.round((totalWorkMin - pauseMin) / 15) * 15 - accountedMin;
+        
+        if (remainingMin > 0) lines.push(`${formatDur(remainingMin)} ${workZNR} (Arbeit)`);
+
+        const finalContent = lines.join('\n');
+        
+        // Fallback Copy Methode
+        const textArea = document.createElement("textarea");
+        textArea.value = finalContent;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            const btn = document.getElementById(`copy-btn-${dateStr}`);
+            btn.classList.add('bg-emerald-500', 'text-white');
+            setTimeout(() => btn.classList.remove('bg-emerald-500', 'text-white'), 1000);
+        } catch (err) {
+            console.error('Copy failed', err);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    // Modal & Save Logic
+    function openManualMeetingModal(dateStr) {
+        activeDayStr = dateStr; activeEventId = null; isManualMode = true;
+        document.getElementById('modalTitle').innerText = "Neues Meeting";
+        document.getElementById('manualInputs').classList.remove('hidden');
+        document.getElementById('meetingFields').classList.remove('hidden');
+        document.getElementById('workFields').classList.add('hidden');
+        document.getElementById('mStart').value = "09:00"; document.getElementById('mEnd').value = "10:00"; document.getElementById('mSubject').value = "";
+        document.getElementById('bookingInput').value = "";
+        document.getElementById('deleteMeetingBtn').classList.add('hidden');
+        document.getElementById('mainModal').classList.remove('hidden');
+    }
+
+    function editManualMeeting(dateStr, mId) {
+        activeDayStr = dateStr; activeEventId = mId; isManualMode = true;
+        const m = manualMeetings[dateStr].find(x => x.id === mId);
+        document.getElementById('modalTitle').innerText = "Meeting bearbeiten";
+        document.getElementById('manualInputs').classList.remove('hidden');
+        document.getElementById('meetingFields').classList.remove('hidden');
+        document.getElementById('workFields').classList.add('hidden');
+        document.getElementById('mStart').value = m.start; document.getElementById('mEnd').value = m.end; document.getElementById('mSubject').value = m.subject;
+        document.getElementById('bookingInput').value = m.booking || "";
+        document.getElementById('deleteMeetingBtn').classList.remove('hidden');
+        document.getElementById('mainModal').classList.remove('hidden');
+    }
+
+    function openMeetingModal(ev) {
+        activeEventId = ev.id; activeDayStr = null; isManualMode = false;
+        document.getElementById('modalTitle').innerText = ev.Subject;
+        document.getElementById('meetingTimeInfo').innerText = `${ev["Start Time"]} - ${ev["End Time"]}`;
+        document.getElementById('bookingInput').value = bookings[ev.id] || '';
+        document.getElementById('manualInputs').classList.add('hidden');
+        document.getElementById('meetingFields').classList.remove('hidden');
+        document.getElementById('workFields').classList.add('hidden');
+        document.getElementById('mainModal').classList.remove('hidden');
+    }
+
+    function openWorkModal(dateStr) {
+        activeDayStr = dateStr; activeEventId = null; isManualMode = false;
+        document.getElementById('modalTitle').innerText = "Präsenzzeit";
+        document.getElementById('workFields').classList.remove('hidden');
+        document.getElementById('meetingFields').classList.add('hidden');
+        const list = document.getElementById('workIntervalsList'); list.innerHTML = '';
+        (workData[dateStr] || [{start: "08:00", end: "16:30", booking: ""}]).forEach(item => addWorkIntervalRow(item));
+        document.getElementById('mainModal').classList.remove('hidden');
+    }
+
+    function saveAll() {
+        if (isManualMode && activeDayStr) {
+            const m = {
+                id: activeEventId || 'm-' + Date.now(),
+                start: document.getElementById('mStart').value,
+                end: document.getElementById('mEnd').value,
+                subject: document.getElementById('mSubject').value || "Meeting",
+                booking: document.getElementById('bookingInput').value.trim()
+            };
+            if(!manualMeetings[activeDayStr]) manualMeetings[activeDayStr] = [];
+            if(activeEventId) {
+                const idx = manualMeetings[activeDayStr].findIndex(x => x.id === activeEventId);
+                manualMeetings[activeDayStr][idx] = m;
+            } else { manualMeetings[activeDayStr].push(m); }
+        } else if (activeEventId) {
+            const val = document.getElementById('bookingInput').value.trim();
+            if(val) bookings[activeEventId] = val; else delete bookings[activeEventId];
+        } else if (activeDayStr) {
+            const rows = Array.from(document.querySelectorAll('.work-row')).map(r => ({ start: r.querySelector('.start-val').value, end: r.querySelector('.end-val').value, booking: r.querySelector('.booking-val').value }));
+            workData[activeDayStr] = rows;
+        }
+        saveData(); closeModal(); updateDisplay();
+    }
+
+    function deleteManualMeeting() {
+        if(activeDayStr && activeEventId) {
+            manualMeetings[activeDayStr] = manualMeetings[activeDayStr].filter(x => x.id !== activeEventId);
+            saveData(); closeModal(); updateDisplay();
+        }
+    }
+
+    function getDurationMin(s, e) {
+        if(!s || !e) return 0;
+        const [h1, m1] = s.split(':').map(Number); const [h2, m2] = e.split(':').map(Number);
+        return (h2 * 60 + m2) - (h1 * 60 + m1);
+    }
+    function formatDur(min) { return `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, '0')}`; }
+    function addWorkIntervalRow(data = {start: "08:00", end: "16:30", booking: ""}) {
+        const div = document.createElement('div');
+        div.className = "flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100 work-row";
+        div.innerHTML = `<input type="time" value="${data.start}" class="w-20 bg-white border rounded p-1 text-xs font-bold start-val"><input type="time" value="${data.end}" class="w-20 bg-white border rounded p-1 text-xs font-bold end-val"><input type="text" value="${data.booking}" placeholder="ZNR" class="flex-1 bg-white border rounded p-1 text-xs font-mono booking-val"><button onclick="this.parentElement.remove()" class="text-red-400"><i data-lucide="trash" class="w-3 h-3"></i></button>`;
+        document.getElementById('workIntervalsList').appendChild(div); lucide.createIcons();
+    }
+
+    function handleFileUpload(e) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const lines = evt.target.result.split(/\r?\n/).filter(l => l.trim().includes(','));
+            const headers = lines[0].split('","').map(h => h.replace(/"/g, '').trim());
+            events = lines.slice(1).map(l => {
+                const vals = l.split('","').map(v => v.replace(/"/g, '').trim());
+                const obj = {}; headers.forEach((h, idx) => obj[h] = vals[idx] || "");
+                if (obj.Subject && obj["Start Date"]) obj.id = `ev-${obj.Subject}-${obj["Start Date"]}-${obj["Start Time"]}`.replace(/[^a-z0-9]/gi, '');
+                return obj;
+            }).filter(o => o.id);
+            saveData(); updateDisplay();
+        };
+        reader.readAsText(e.target.files[0]);
+    }
+    function saveData() { localStorage.setItem('wf_events', JSON.stringify(events)); localStorage.setItem('wf_bookings', JSON.stringify(bookings)); localStorage.setItem('wf_work', JSON.stringify(workData)); localStorage.setItem('wf_manual', JSON.stringify(manualMeetings)); }
+    function closeModal() { document.getElementById('mainModal').classList.add('hidden'); }
+    function changeWeek(d) { currentWeekStart.setDate(currentWeekStart.getDate() + (d * 7)); updateDisplay(); }
+    function goToToday() { currentWeekStart = getMonday(new Date()); updateDisplay(); }
+    function clearAll() { if(confirm("Wirklich alles löschen?")) { localStorage.clear(); location.reload(); } }
+    window.onload = init;
+</script>
+</body>
+</html>

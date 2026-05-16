@@ -1,0 +1,7 @@
+bitte wenn man etwas einfügen kann, dann nicht extra die vorschau beim pasten einblenden.
+
+die dictionary funktion geht nicht mehr, bitte überarbeiten.
+ziel von ihr ist ja, dass anhand von einem meeting namend die buchungsinformationen gesetzt werden.
+
+
+ und auch eine regex funktion hinzufügen, dass beim ersetzen nach einem regex gesucht wird. im textfeld rexhts soll ein button zum an und ausschalten dieser funktion sein
