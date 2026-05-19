@@ -201,14 +201,14 @@ class CalendarStore {
             if (p.length < 3) return false;
             return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
         }).map(e => ({
-            booking: this.bookings[e.id] || this.getDictBooking(e.Subject),
+            booking: this.getDictBooking(e.Subject) || this.bookings[e.id],
             dur:   getDurationMin(e["Start Time"], e["End Time"]),
             ooo:   e["Show time as"] === "4" || e.Subject.toLowerCase().includes("out of office") || e.Subject.toLowerCase().includes("ooo"),
             pause: e.Subject.toLowerCase().includes("pause"),
         }));
 
         const dayManual = (this.manualMeetings[dateStr] || []).map(m => ({
-            booking: m.booking || getDictBooking(this.bookingDict, this.dictRegexFlags, m.subject),
+            booking: getDictBooking(this.bookingDict, this.dictRegexFlags, m.subject) || m.booking,
             dur:   getDurationMin(m.start, m.end),
             ooo:   m.subject.toLowerCase().includes("out of office") || m.subject.toLowerCase().includes("ooo"),
             pause: m.subject.toLowerCase().includes("pause"),

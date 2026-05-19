@@ -1,7 +1,8 @@
-bitte wenn man etwas einfügen kann, dann nicht extra die vorschau beim pasten einblenden.
-
-die dictionary funktion geht nicht mehr, bitte überarbeiten.
-ziel von ihr ist ja, dass anhand von einem meeting namend die buchungsinformationen gesetzt werden.
+wenn ich bei der präsenzzeit in dem wochenview auf der karte einfügen mache soll gleich die gesamte zeit auf das was ich eingefügt habe gebucht werden. im moment ist es so, dass es jetzt im calender view drin steht ich dieses aber wenn ich darauf drücke nicht mehr bearbeiten kann. so soll es nicht sein. das feld in das es eingefügt wurde soll die ungebuchte zeit bentuzen und dsas zwischenfeld wo es jetzt noch irgendwie gespeichert ist soll heraus.
 
 
- und auch eine regex funktion hinzufügen, dass beim ersetzen nach einem regex gesucht wird. im textfeld rexhts soll ein button zum an und ausschalten dieser funktion sein
+außerdem soll man auf den einchecken button klicken können mit rechts und dann auch etwas einfügen in dem menü dass sich da öffnet und es soll das selbe machen wie oben beschrieben aber das menü (es existiert schon ein menü, nur nicht hier, das bestehende so ähnlich wie möglich verwenden und nicht neue erfunden) einen eintrag anzeigen bei dem man eine ansicht bekommt bei der man das gekommen ändern kann und die buchung auch noch ändern kann.
+
+das dictionary popup soll auch einen json import und export button bekommen, mit dem man alle einträge exportieren und alle einträge speichern kann.
+
+die buttons für garbage icon, dictionary icon und i-icon sollen sich auch so verhalten wie der csv button, vom hover effekt her und button design (nur kein text im vergleich zum csv button)

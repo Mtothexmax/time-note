@@ -172,10 +172,11 @@
                 const sm = toMinutes(w.start), em = toMinutes(w.end);
                 if (!isNaN(sm) && !isNaN(em)) {
                     slots.push({ id, startMin: sm, endMin: em });
-                    const isWorkBooked = w.booking || fullyBooked;
+                    const unbookedMin = Math.max(0, totalWorkMin - totalDurMin - totalBookedMeetingMin);
+                    const isWorkBooked = unbookedMin === 0;
                     const wkStyle = isWorkBooked ? 'card-booked' : 'card-work';
-                    const wkTitle = `ARBEIT: ${w.booking || (fullyBooked ? 'Gebucht' : '?')}`;
-                    eventMap.set(id, { start: w.start, end: w.end, title: wkTitle, style: wkStyle, booking: w.booking, onClick: () => onOpenWork(dStr), onBookingPaste: (b: string) => { const intervals = calendarStore.workData[dStr]; if (intervals?.[wi]) { intervals[wi].booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } } });
+                    const wkTitle = `ARBEIT: ${fullyBooked ? 'Gebucht' : '?'}`;
+                    eventMap.set(id, { start: w.start, end: w.end, title: wkTitle, style: wkStyle, booking: '', onClick: () => onOpenWork(dStr), onBookingPaste: (b: string) => { if (unbookedMin > 0) { const items = calendarStore.workDurationItems[dStr] || []; items.push({ durationMin: unbookedMin, booking: b }); calendarStore.workDurationItems[dStr] = items; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } } });
                 }
             });
 
@@ -188,7 +189,7 @@
                 if (!isNaN(sm) && !isNaN(em)) {
                     slots.push({ id, startMin: sm, endMin: em });
                     const manualDictBooking = getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject);
-                    const effectiveBooking = m.booking || manualDictBooking;
+                    const effectiveBooking = manualDictBooking || m.booking;
                     const style = isManualOOO ? 'card-ooo' : (effectiveBooking ? 'card-booked' : 'card-manual');
                     eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: effectiveBooking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } } });
                 }
@@ -207,7 +208,7 @@
                     slots.push({ id, startMin: sm, endMin: em });
                     const dictBooking = getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject);
                     const manualBooking = calendarStore.bookings[ev.id];
-                    const effectiveBooking = manualBooking || dictBooking || '';
+                    const effectiveBooking = dictBooking || manualBooking || '';
                     const hasZNR = !!effectiveBooking;
                     const ooo = isOOO(ev.Subject, ev["Show time as"]);
                     const style = ooo ? 'card-ooo' : (isPause(ev.Subject) ? 'card-pause' : (hasZNR ? 'card-booked' : 'card-csv'));

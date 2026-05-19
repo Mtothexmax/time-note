@@ -4,6 +4,7 @@
 
     let open = $state(false);
     let inputEl: HTMLInputElement;
+    let dropdownStyle = $state<{ left: string; top: string }>({ left: '0', top: '100%' });
     const minutes = ['00', '15', '30', '45'];
     const displayVal = $derived(value ? value.split(':').slice(0, 2).join(':') : '');
     const selHour = $derived(displayVal.split(':')[0] ?? '');
@@ -44,19 +45,26 @@
         requestAnimationFrame(() => inputEl.setSelectionRange(next, next));
     }
 
+    let wrapperEl: HTMLDivElement;
+    let dropdownEl: HTMLDivElement;
+
     function onFocus() {
+        const rect = inputEl.getBoundingClientRect();
+        dropdownStyle = { left: `${rect.left}px`, top: `${rect.bottom + 4}px` };
         open = true;
     }
 
-    function onOutsideClick(e: MouseEvent) {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.tn-timepicker')) open = false;
+    function onWindowClick(e: MouseEvent) {
+        if (!open) return;
+        if (wrapperEl && dropdownEl && !wrapperEl.contains(e.target as Node) && !dropdownEl.contains(e.target as Node)) open = false;
     }
 </script>
 
-<svelte:window onclick={onOutsideClick} />
+<svelte:window onclick={onWindowClick} />
 
-<div class="tn-timepicker" style="position: relative; display: inline-block;">
+
+
+<div bind:this={wrapperEl} class="tn-timepicker" style="position: relative; display: inline-block;">
     <input
         bind:this={inputEl}
         type="text"
@@ -69,34 +77,35 @@
         readonly={false}
         style="background: var(--input-bg); border: 2px solid var(--input-border); color: var(--input-text);"
     >
-    {#if open}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="grid-dropdown active">
-            <div class="column-group">
-                {#each { length: 7 }, i}
-                    {@const h = i + 7}
-                    <div class="time-row">
-                        <span class="hour-label" style="color: var(--text-primary)" role="button" tabindex="-1" onclick={() => pick(h, '00')}>{String(h).padStart(2, '0')}</span>
-                        {#each minutes as m}
-                            <span class="time-cell" class:selected={selHour === String(h).padStart(2, '0') && selMin === m} class:disabled={isDisabled(h, m)} role="button" tabindex="-1" onclick={() => pick(h, m)}>{m}</span>
-                        {/each}
-                    </div>
-                {/each}
-            </div>
-            <div class="column-group">
-                {#each { length: 7 }, i}
-                    {@const h = i + 14}
-                    <div class="time-row">
-                        <span class="hour-label" style="color: var(--text-primary)" role="button" tabindex="-1" onclick={() => pick(h, '00')}>{String(h).padStart(2, '0')}</span>
-                        {#each minutes as m}
-                            <span class="time-cell" class:selected={selHour === String(h).padStart(2, '0') && selMin === m} class:disabled={isDisabled(h, m)} role="button" tabindex="-1" onclick={() => pick(h, m)}>{m}</span>
-                        {/each}
-                    </div>
-                {/each}
-            </div>
-        </div>
-    {/if}
 </div>
+
+{#if open}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div bind:this={dropdownEl} class="tn-timepicker-dropdown active" style="left: {dropdownStyle.left}; top: {dropdownStyle.top};">
+        <div class="column-group">
+            {#each { length: 7 }, i}
+                {@const h = i + 7}
+                <div class="time-row">
+                    <span class="hour-label" style="color: var(--text-primary)" role="button" tabindex="-1" onclick={() => pick(h, '00')}>{String(h).padStart(2, '0')}</span>
+                    {#each minutes as m}
+                        <span class="time-cell" class:selected={selHour === String(h).padStart(2, '0') && selMin === m} class:disabled={isDisabled(h, m)} role="button" tabindex="-1" onclick={() => pick(h, m)}>{m}</span>
+                    {/each}
+                </div>
+            {/each}
+        </div>
+        <div class="column-group">
+            {#each { length: 7 }, i}
+                {@const h = i + 14}
+                <div class="time-row">
+                    <span class="hour-label" style="color: var(--text-primary)" role="button" tabindex="-1" onclick={() => pick(h, '00')}>{String(h).padStart(2, '0')}</span>
+                    {#each minutes as m}
+                        <span class="time-cell" class:selected={selHour === String(h).padStart(2, '0') && selMin === m} class:disabled={isDisabled(h, m)} role="button" tabindex="-1" onclick={() => pick(h, m)}>{m}</span>
+                    {/each}
+                </div>
+            {/each}
+        </div>
+    </div>
+{/if}
 
 <style>
     .time-input {
@@ -115,11 +124,9 @@
         box-sizing: border-box;
     }
     .time-input:focus { border-color: var(--text-indigo) !important; }
-    .grid-dropdown {
-        position: absolute;
-        top: 115%;
-        left: 0;
-        z-index: 100;
+    .tn-timepicker-dropdown {
+        position: fixed;
+        z-index: 9999;
         background: var(--bg-card);
         border: 1px solid var(--border-main);
         box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);

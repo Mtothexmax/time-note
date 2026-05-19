@@ -1,7 +1,9 @@
 
 <script lang="ts">
-    import { ChevronLeft, ChevronRight, Upload, Download, Trash2, Play, Square, BookOpen, Info } from 'lucide-svelte';
-    import { calendarStore } from '$lib/stores/calendarStore.svelte';
+    import { ChevronLeft, ChevronRight, Upload, Download, Trash2, Play, Square, BookOpen, Info, ClipboardPaste } from 'lucide-svelte';
+    import BookingFields from './BookingFields.svelte';
+    import TimePicker from './TimePicker.svelte';
+    import { calendarStore, getDictBooking, type WorkInterval, type DurationItem } from '$lib/stores/calendarStore.svelte';
     import { formatDate, getDurationMin, toMinutes, csvDateToISO } from '$lib/utils/dateUtils';
     import InfoModal from './InfoModal.svelte';
 
@@ -126,6 +128,64 @@
         reader.readAsText(input.files[0]);
         input.value = '';
     }
+
+    let checkinCtx = $state<{ x: number; y: number } | null>(null);
+    let checkinPasteOpen = $state(false);
+    let checkinPasteTime = $state('');
+    let checkinPasteBooking = $state('');
+    let dialogRef: HTMLDivElement | undefined = $state();
+
+    function openCheckinCtx(e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        checkinCtx = { x: e.clientX, y: e.clientY };
+    }
+
+    function closeCheckinCtx() {
+        checkinCtx = null;
+        checkinPasteOpen = false;
+    }
+
+    function openCheckinPaste() {
+        checkinCtx = null;
+        checkinPasteTime = calendarStore.checkIn
+            ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+            : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        checkinPasteBooking = calendarStore.copiedBookingEntry
+            ? [calendarStore.copiedBookingEntry.Projekt || '', calendarStore.copiedBookingEntry.Vorgang || '', calendarStore.copiedBookingEntry['Tätigkeit'] || '', calendarStore.copiedBookingEntry.Bemerkung || ''].join(';')
+            : '';
+        checkinPasteOpen = true;
+    }
+
+    function confirmCheckinPaste() {
+        const today = formatDate(new Date());
+        if (!calendarStore.workData[today]) calendarStore.workData[today] = [];
+        calendarStore.workData[today].push({ start: checkinPasteTime, end: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), booking: '' });
+        calendarStore.save();
+        calendarStore.dispatchDayEvent(today);
+        const unbooked = (calendarStore.workData[today] || []).reduce((s, w) => s + getDurationMin(w.start, w.end), 0)
+            - (calendarStore.workDurationItems[today] || []).reduce((s, d) => s + d.durationMin, 0);
+        let bookedMeetingMin = 0;
+        calendarStore.events.forEach(ev => {
+            const p = ev["Start Date"]?.split('-');
+            if (!p || p.length < 3) return;
+            const evDateStr = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+            if (evDateStr !== today) return;
+            if (calendarStore.bookings[ev.id] || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject)) bookedMeetingMin += getDurationMin(ev["Start Time"], ev["End Time"]);
+        });
+        (calendarStore.manualMeetings[today] || []).forEach(m => {
+            if (m.booking || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject)) bookedMeetingMin += getDurationMin(m.start, m.end);
+        });
+        const unbookedMin = Math.max(0, unbooked - bookedMeetingMin);
+        if (unbookedMin > 0 && checkinPasteBooking) {
+            const items = calendarStore.workDurationItems[today] || [];
+            items.push({ durationMin: unbookedMin, booking: checkinPasteBooking });
+            calendarStore.workDurationItems[today] = items;
+        }
+        calendarStore.save();
+        calendarStore.dispatchDayEvent(today);
+        closeCheckinCtx();
+    }
 </script>
 
 <header class="flex flex-wrap justify-between items-center mb-4 p-4 rounded-2xl shadow-sm gap-4" style="background: var(--bg-card); border-color: var(--border-main)">
@@ -165,6 +225,7 @@
     <div class="flex items-center gap-2">
         {#if calendarStore.checkIn}
             <button onclick={() => calendarStore.checkOutNow()}
+                oncontextmenu={openCheckinCtx}
                 class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
                 style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border); cursor: pointer"
                 title="Eingecheckt seit {checkInArrival}"
@@ -174,6 +235,7 @@
             </button>
         {:else}
             <button onclick={() => calendarStore.checkInNow()}
+                oncontextmenu={openCheckinCtx}
                 class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
                 style="background: var(--btn-checkin-bg); color: var(--btn-checkin-text); border-color: var(--btn-checkin-border); cursor: pointer"
                 onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-border)'}
@@ -192,18 +254,73 @@
         <button onclick={exportJSON} class="flex items-center gap-2 px-3 py-2 rounded-xl transition text-xs font-bold" style="background: var(--bg-page); border: 1px solid var(--border-main); color: var(--text-muted)" title="Daten als JSON exportieren">
             <Download size={14} /> JSON
         </button>
-            <button onclick={clearAll} class="p-2 text-slate-300 hover:text-red-500 transition">
-            <Trash2 size={16} />
+            <button onclick={clearAll} class="flex items-center justify-center p-2 rounded-xl transition text-xs font-bold" style="background: var(--bg-page); border: 1px solid var(--border-main); color: var(--text-muted)" title="Alle Daten löschen">
+            <Trash2 size={14} />
         </button>
         {#if onOpenBookingDict}
-            <button onclick={onOpenBookingDict} class="p-2 transition-colors" style="color: var(--text-muted)" title="Buchungsnummern-Dictionary">
-                <BookOpen size={16} />
+            <button onclick={onOpenBookingDict} class="flex items-center justify-center p-2 rounded-xl transition text-xs font-bold" style="background: var(--bg-page); border: 1px solid var(--border-main); color: var(--text-muted)" title="Buchungsnummern-Dictionary">
+                <BookOpen size={14} />
             </button>
         {/if}
-        <button onclick={() => infoOpen = true} class="p-2 transition-colors" style="color: var(--text-muted)" title="Info">
-            <Info size={16} />
+        <button onclick={() => infoOpen = true} class="flex items-center justify-center p-2 rounded-xl transition text-xs font-bold" style="background: var(--bg-page); border: 1px solid var(--border-main); color: var(--text-muted)" title="Info">
+            <Info size={14} />
         </button>
     </div>
 </header>
+
+{#if checkinCtx}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 z-[9998]" onclick={closeCheckinCtx}></div>
+    <div
+        class="fixed z-[9999] rounded-lg shadow-xl py-1 min-w-[180px]"
+        style="top: {checkinCtx.y}px; left: {checkinCtx.x}px; background: var(--bg-card); border: 1px solid var(--border-main);"
+    >
+        <div class="px-2 py-1 text-[9px] font-black uppercase tracking-wider" style="color: var(--text-muted)">Check-In</div>
+        <div style="border-top: 1px solid var(--border-main); margin: 2px 0;"></div>
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={() => { checkinCtx = null; checkinPasteTime = calendarStore.checkIn ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); checkinPasteBooking = ''; checkinPasteOpen = true; }}
+        >
+            <Play size={11} /> Anpassen
+        </button>
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={openCheckinPaste}
+        >
+            <ClipboardPaste size={11} /> Einfügen
+        </button>
+    </div>
+{/if}
+
+{#if checkinPasteOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 z-[2000] flex items-center justify-center" style="background: rgba(0,0,0,0.45);" onclick={(e) => { if (dialogRef && !dialogRef.contains(e.target as Node)) closeCheckinCtx(); }}>
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div bind:this={dialogRef} class="p-5 rounded-2xl shadow-2xl" style="background: var(--bg-card); border: 1px solid var(--border-main); min-width: 300px;" onclick={(e) => e.stopPropagation()}>
+            <div class="text-sm font-bold mb-3">Einchecken &amp; Einfügen</div>
+            <div class="mb-3">
+                <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Gekommen</div>
+                <TimePicker value={checkinPasteTime} onChange={(v) => checkinPasteTime = v} />
+            </div>
+            <div class="mb-3">
+                <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Buchung</div>
+                <BookingFields value={checkinPasteBooking} onChange={(v) => checkinPasteBooking = v} />
+            </div>
+            <div class="flex gap-2">
+                <button onclick={closeCheckinCtx} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--bg-page); color: var(--text-muted)">Abbrechen</button>
+                <button onclick={confirmCheckinPaste} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--text-indigo); color: white">Einchecken &amp; Einfügen</button>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <InfoModal isOpen={infoOpen} onClose={() => infoOpen = false} />

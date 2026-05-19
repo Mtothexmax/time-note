@@ -45,7 +45,7 @@
                 start: ev["Start Time"],
                 end: ev["End Time"],
                 subject: ev.Subject,
-                booking: calendarStore.bookings[ev.id] || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject) || '',
+                booking: getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject) || calendarStore.bookings[ev.id] || '',
                 timeInfo: `${ev["Start Time"]} - ${ev["End Time"]}`
             }
         };
@@ -171,6 +171,19 @@
         }
         calendarStore.bookingDict = obj;
         calendarStore.dictRegexFlags = regexFlags;
+        // Apply dict to all existing events — overwrites manual bookings
+        calendarStore.events.forEach(ev => {
+            const d = getDictBooking(obj, regexFlags, ev.Subject);
+            if (d) calendarStore.bookings[ev.id] = d;
+        });
+        // Apply dict to all manual meetings
+        Object.keys(calendarStore.manualMeetings).forEach(dStr => {
+            calendarStore.manualMeetings[dStr] = (calendarStore.manualMeetings[dStr] || []).map(m => {
+                const d = getDictBooking(obj, regexFlags, m.subject);
+                if (d) m.booking = d;
+                return m;
+            });
+        });
         calendarStore.save();
         calendarStore.dispatchAllEventDates();
         dictOpen = false;

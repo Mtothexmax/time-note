@@ -51,6 +51,33 @@
         localEntries[i].isRegex = !localEntries[i].isRegex;
     }
 
+    function exportDictJSON() {
+        const data = localEntries.map(e => ({ key: e.key, value: e.value, isRegex: e.isRegex }));
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dict-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importDictJSON(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files?.length) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const parsed = JSON.parse(e.target?.result as string);
+                if (Array.isArray(parsed)) {
+                    localEntries = parsed.map((p: any) => ({ key: p.key || '', value: p.value || '', isRegex: p.isRegex ?? false }));
+                }
+            } catch { alert('Ungültige JSON-Datei'); }
+        };
+        reader.readAsText(input.files[0]);
+        input.value = '';
+    }
+
     let gridEl: HTMLDivElement | undefined = $state();
 
     $effect(() => {
@@ -103,6 +130,13 @@
         </div>
     </div>
     <div class="flex gap-2 mt-4">
+        <button onclick={exportDictJSON} class="px-4 py-3 rounded-xl font-bold text-sm transition-colors" style="background: var(--bg-page); border: 1px solid var(--border-main); color: var(--text-muted)">
+            Export JSON
+        </button>
+        <input type="file" id="dictJsonInput" accept=".json" class="hidden" onchange={importDictJSON}>
+        <label for="dictJsonInput" class="cursor-pointer px-4 py-3 rounded-xl font-bold text-sm transition-colors" style="background: var(--bg-page); border: 1px solid var(--border-main); color: var(--text-muted)">
+            Import JSON
+        </label>
         <button onclick={() => onSave(localEntries)} class="flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-colors" style="background: var(--text-indigo); color: white">
             Speichern
         </button>
