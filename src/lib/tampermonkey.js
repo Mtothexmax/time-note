@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Time-Note ZEP Integrator
 // @namespace    http://tampermonkey.net/
-// @version      3.8
+// @version      3.9
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
 // @match        https://mtothexmax.github.io/time-note/*
@@ -22,6 +22,8 @@
     function sleep(ms) {
         return new Promise(r => setTimeout(r, ms));
     }
+
+    const RETRY_COUNT = 3;
 
     LOG('Script gestartet auf:', location.hostname);
 
@@ -87,6 +89,23 @@
         el.style.color = type === 'error'   ? '#dc3545'
                        : type === 'success' ? '#0B8069'
                        : '#555';
+    }
+
+    // ------------------------------------------------------------------
+    // Append a line to the status display without clearing existing content.
+    // Does NOT modify _statusLocked — caller manages lock state during retries.
+    // ------------------------------------------------------------------
+    function appendStatus(msg, type = 'info') {
+        const el = document.getElementById('tn-import-status');
+        if (!el) return;
+        const color = type === 'error'   ? '#dc3545'
+                    : type === 'success' ? '#0B8069'
+                    : '#555';
+        const span = document.createElement('span');
+        span.textContent = msg;
+        span.style.color = color;
+        el.appendChild(document.createElement('br'));
+        el.appendChild(span);
     }
 
     // ------------------------------------------------------------------
@@ -333,6 +352,8 @@
     async function runImport() {
         LOG('Import gestartet');
         _statusLocked = false;
+        const statusEl = document.getElementById('tn-import-status');
+        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
         const importBtn = document.getElementById('tn-import-btn');
         if (importBtn) importBtn.disabled = true;
 
@@ -371,28 +392,44 @@
                 setStatus(`Importiere ${i + 1}/${n} ...`);
                 LOG(`--- Eintrag ${i + 1}/${n} ---`);
 
-                try {
-                    await fillEntry(datum, eintrag);
-                    // Wait for Tätigkeit AJAX to fully settle before writing Dauer/Bemerkung.
-                    await sleep(2000);
-                    setFinalFields(eintrag);
-                    await sleep(300);
+                let lastErr = null;
+                for (let retry = 0; retry <= RETRY_COUNT; retry++) {
+                    try {
+                        await fillEntry(datum, eintrag);
+                        // Wait for Tätigkeit AJAX to fully settle before writing Dauer/Bemerkung.
+                        await sleep(2000);
+                        setFinalFields(eintrag);
+                        await sleep(300);
 
-                    const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
-                    await sleep(300);
-                    clickSpeichern();
-                    await saveWait;
+                        const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
+                        await sleep(300);
+                        clickSpeichern();
+                        await saveWait;
 
-                    saved++;
-                    LOG(`Eintrag ${i + 1} gespeichert ✓`);
-                    setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
+                        lastErr = null;
+                        break;
+                    } catch (err) {
+                        LOG(`FEHLER Eintrag ${i + 1} (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
+                        lastErr = err;
+                        if (retry < RETRY_COUNT) {
+                            appendStatus(`Retry ${retry + 1}/${RETRY_COUNT}: ${err.message}`, 'error');
+                            _statusLocked = false;
+                            await sleep(2000);
+                        }
+                    }
+                }
 
-                    await sleep(500);
-                } catch (err) {
-                    LOG(`FEHLER Eintrag ${i + 1}:`, err);
-                    setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${err.message}`, 'error');
+                if (lastErr) {
+                    LOG(`FEHLER Eintrag ${i + 1} nach ${RETRY_COUNT + 1} Versuchen:`, lastErr);
+                    setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${lastErr.message}`, 'error');
                     return;
                 }
+
+                saved++;
+                LOG(`Eintrag ${i + 1} gespeichert ✓`);
+                setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
+
+                await sleep(500);
             }
 
             setStatus(`✓ ${saved} von ${n} Einträgen gespeichert`, 'success');
@@ -407,6 +444,8 @@
     async function runClipboardImport() {
         LOG('Clipboard-Import gestartet');
         _statusLocked = false;
+        const statusEl = document.getElementById('tn-import-status');
+        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
         const clipBtn = document.getElementById('tn-clipboard-btn');
         if (clipBtn) clipBtn.disabled = true;
 
@@ -448,23 +487,40 @@
                     const e = entries[i];
                     setStatus(`Importiere ${i + 1}/${n} ...`);
                     LOG(`--- Eintrag ${i + 1}/${n} ---`);
-                    try {
-                        await fillEntry(datum, e);
-                        await sleep(2000);
-                        setFinalFields(e);
-                        await sleep(300);
-                        const saveWait = waitForSave(e.Bemerkung || '', 15000);
-                        await sleep(300);
-                        clickSpeichern();
-                        await saveWait;
-                        saved++;
-                        setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
-                        await sleep(500);
-                    } catch (err) {
-                        LOG(`FEHLER Eintrag ${i + 1}:`, err);
-                        setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${err.message}`, 'error');
+
+                    let lastErr = null;
+                    for (let retry = 0; retry <= RETRY_COUNT; retry++) {
+                        try {
+                            await fillEntry(datum, e);
+                            await sleep(2000);
+                            setFinalFields(e);
+                            await sleep(300);
+                            const saveWait = waitForSave(e.Bemerkung || '', 15000);
+                            await sleep(300);
+                            clickSpeichern();
+                            await saveWait;
+                            lastErr = null;
+                            break;
+                        } catch (err) {
+                            LOG(`FEHLER Eintrag ${i + 1} (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
+                            lastErr = err;
+                            if (retry < RETRY_COUNT) {
+                                appendStatus(`Retry ${retry + 1}/${RETRY_COUNT}: ${err.message}`, 'error');
+                                _statusLocked = false;
+                                await sleep(2000);
+                            }
+                        }
+                    }
+
+                    if (lastErr) {
+                        LOG(`FEHLER Eintrag ${i + 1} nach ${RETRY_COUNT + 1} Versuchen:`, lastErr);
+                        setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${lastErr.message}`, 'error');
                         return;
                     }
+
+                    saved++;
+                    setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
+                    await sleep(500);
                 }
                 setStatus(`✓ ${saved} von ${n} Einträgen gespeichert`, 'success');
                 return;
@@ -474,15 +530,37 @@
             setStatus('Importiere aus Zwischenablage ...');
             LOG('Eintrag aus Clipboard:', eintrag);
 
-            await fillEntry(datum, eintrag);
-            await sleep(2000);
-            setFinalFields(eintrag);
-            await sleep(300);
+            let lastErr = null;
+            for (let retry = 0; retry <= RETRY_COUNT; retry++) {
+                try {
+                    await fillEntry(datum, eintrag);
+                    await sleep(2000);
+                    setFinalFields(eintrag);
+                    await sleep(300);
 
-            const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
-            await sleep(300);
-            clickSpeichern();
-            await saveWait;
+                    const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
+                    await sleep(300);
+                    clickSpeichern();
+                    await saveWait;
+
+                    lastErr = null;
+                    break;
+                } catch (err) {
+                    LOG(`FEHLER Clipboard-Eintrag (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
+                    lastErr = err;
+                    if (retry < RETRY_COUNT) {
+                        appendStatus(`Retry ${retry + 1}/${RETRY_COUNT}: ${err.message}`, 'error');
+                        _statusLocked = false;
+                        await sleep(2000);
+                    }
+                }
+            }
+
+            if (lastErr) {
+                LOG('FEHLER Clipboard-Import nach allen Versuchen:', lastErr);
+                setStatus('Fehler: ' + lastErr.message, 'error');
+                return;
+            }
 
             setStatus('✓ Eintrag aus Zwischenablage gespeichert', 'success');
             LOG('Clipboard-Eintrag gespeichert ✓');
