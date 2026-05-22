@@ -38,7 +38,13 @@
         <input type="text" value={parts[0]} oninput={(e) => set(0, (e.target as HTMLInputElement).value)} placeholder="Projekt" class="w-full p-2 rounded-lg text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
     </div>
     <div>
-        <label class="block text-[9px] font-bold uppercase mb-0.5" style="color: var(--text-muted)">Vorgang</label>
+        <label class="block text-[9px] font-bold uppercase mb-0.5" style="color: var(--text-muted)">
+            Vorgang
+            <span
+                title="Mit #<Nummer> (z.B. #333333) wird im ZEP-Vorgang-Dropdown nach einer Option gesucht, deren Text diese Nummer enthält – entspricht der Suche im Dropdown."
+                style="cursor: help; font-style: normal; font-weight: normal; text-transform: none; font-size: 10px; opacity: 0.7; margin-left: 2px; vertical-align: middle;"
+            >ℹ</span>
+        </label>
         <input type="text" value={parts[1]} oninput={(e) => set(1, (e.target as HTMLInputElement).value)} placeholder="Vorgang" class="w-full p-2 rounded-lg text-xs font-mono" style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)">
     </div>
     <div>

@@ -5,7 +5,6 @@
 // @version      3.9
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
-// @match        https://mtothexmax.github.io/time-note/*
 // @match        https://www.zep-online.de/zepintendgeoinformatik/*
 // @match        http://localhost:5173/*
 // @grant        GM_setValue
@@ -115,7 +114,11 @@
     // A native 'change' event is also dispatched so any other listeners fire.
     // ------------------------------------------------------------------
     function setSelect(selectEl, text) {
-        const opt = [...selectEl.options].find(o => o.text.trim() === text.trim());
+        const t = text.trim();
+        // "#<digits>" → match by option text containing the number (ZEP option text, not value attr)
+        const opt = /^#\d+$/.test(t)
+            ? [...selectEl.options].find(o => o.text.trim().includes(t.slice(1)))
+            : [...selectEl.options].find(o => o.text.trim() === t);
         if (!opt) return false;
         selectEl.value = opt.value;
         selectEl.dispatchEvent(new Event('change', { bubbles: true }));
@@ -131,11 +134,19 @@
     async function waitForOption(selectId, text, ms = 8000) {
         LOG(`Warte auf Option "${text}" in #${selectId} ...`);
         const end = Date.now() + ms;
+        const t = text.trim();
+        const byNum = /^#\d+$/.test(t);
+        const num = byNum ? t.slice(1) : null;
         while (Date.now() < end) {
             const sel = document.getElementById(selectId);
-            if (sel && [...sel.options].some(o => o.text.trim() === text.trim())) {
-                LOG(`Option "${text}" gefunden.`);
-                return document.getElementById(selectId);
+            if (sel) {
+                const found = byNum
+                    ? [...sel.options].some(o => o.text.trim().includes(num))
+                    : [...sel.options].some(o => o.text.trim() === t);
+                if (found) {
+                    LOG(`Option "${text}" gefunden.`);
+                    return document.getElementById(selectId);
+                }
             }
             await sleep(120);
         }
