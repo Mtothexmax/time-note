@@ -1,8 +1,12 @@
 <script lang="ts">
+    import { fieldHistory } from "$lib/stores/fieldHistory.svelte";
+
     let { value, onChange } = $props<{
         value: string;
         onChange: (v: string) => void;
     }>();
+
+    const uid = Math.random().toString(36).slice(2, 8);
 
     let parts = $state<string[]>(["", "", "", ""]);
     let lastSent = $state("");
@@ -32,6 +36,12 @@
         lastSent = serialized;
         onChange(serialized);
     }
+
+    const FIELDS = ["projekt", "vorgang", "taetigkeit", "bemerkung"];
+
+    function onBlur(i: number) {
+        fieldHistory.add(FIELDS[i], parts[i]);
+    }
 </script>
 
 <div
@@ -47,10 +57,17 @@
             type="text"
             value={parts[0]}
             oninput={(e) => set(0, (e.target as HTMLInputElement).value)}
+            onblur={() => onBlur(0)}
             placeholder="Projekt"
+            list="tn-hist-projekt-{uid}"
             class="w-full p-2 rounded-lg text-xs font-mono"
             style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
         />
+        <datalist id="tn-hist-projekt-{uid}">
+            {#each fieldHistory.get("projekt") as opt}
+                <option value={opt} />
+            {/each}
+        </datalist>
     </div>
     <div>
         <label
@@ -79,10 +96,17 @@
             type="text"
             value={parts[1]}
             oninput={(e) => set(1, (e.target as HTMLInputElement).value)}
+            onblur={() => onBlur(1)}
             placeholder="Vorgang"
+            list="tn-hist-vorgang-{uid}"
             class="w-full p-2 rounded-lg text-xs font-mono"
             style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
         />
+        <datalist id="tn-hist-vorgang-{uid}">
+            {#each fieldHistory.get("vorgang") as opt}
+                <option value={opt} />
+            {/each}
+        </datalist>
     </div>
     <div>
         <label
@@ -93,10 +117,17 @@
             type="text"
             value={parts[2]}
             oninput={(e) => set(2, (e.target as HTMLInputElement).value)}
+            onblur={() => onBlur(2)}
             placeholder="Tätigkeit"
+            list="tn-hist-taetigkeit-{uid}"
             class="w-full p-2 rounded-lg text-xs font-mono"
             style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"
         />
+        <datalist id="tn-hist-taetigkeit-{uid}">
+            {#each fieldHistory.get("taetigkeit") as opt}
+                <option value={opt} />
+            {/each}
+        </datalist>
     </div>
     <div></div>
     <div class="col-span-2">
