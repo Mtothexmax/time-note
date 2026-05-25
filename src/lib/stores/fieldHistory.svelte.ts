@@ -1,9 +1,12 @@
+import { browser } from '$app/environment';
+
 const STORAGE_KEY = 'tn_field_history';
 const MAX_ENTRIES = 50;
 
 type History = Record<string, string[]>;
 
 function load(): History {
+    if (!browser) return {};
     try {
         return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
     } catch {
@@ -19,6 +22,7 @@ class FieldHistoryStore {
     }
 
     add(field: string, value: string) {
+        if (!browser) return;
         const v = value.trim();
         if (!v) return;
         const existing = this.#data[field] ?? [];

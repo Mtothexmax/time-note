@@ -3,7 +3,9 @@
     import { X } from 'lucide-svelte';
     import { fade, scale } from 'svelte/transition';
 
-    let { isOpen, title, onClose, children, titleValue, onTitleChange, widthClass = 'max-w-md' } = $props<{
+    import type { Snippet } from 'svelte';
+
+    let { isOpen, title, onClose, children, titleValue, onTitleChange, widthClass = 'max-w-md', titleSnippet } = $props<{
         isOpen: boolean;
         title: string;
         onClose: () => void;
@@ -11,6 +13,7 @@
         titleValue?: string;
         onTitleChange?: (v: string) => void;
         widthClass?: string;
+        titleSnippet?: Snippet;
     }>();
 
     let titleInput: HTMLInputElement | undefined = $state();
@@ -46,6 +49,8 @@
             <div class="flex justify-between items-start flex-shrink-0 px-6 pt-6 pb-4" style="min-height: 32px;">
                 {#if onTitleChange}
                     <input bind:this={titleInput} type="text" value={titleValue ?? ''} oninput={(e) => onTitleChange((e.target as HTMLInputElement).value)} placeholder="Titel" class="w-full p-0 border-0 outline-none" style="background: transparent; color: var(--text-primary); font-size: 1.25rem; font-weight: 700; margin-right: 8px;">
+                {:else if titleSnippet}
+                    {@render titleSnippet()}
                 {:else if title}
                     <h3 class="text-xl font-bold">{title}</h3>
                 {:else}

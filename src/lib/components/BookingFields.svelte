@@ -65,7 +65,7 @@
         />
         <datalist id="tn-hist-projekt-{uid}">
             {#each fieldHistory.get("projekt") as opt}
-                <option value={opt} />
+                <option value={opt}></option>
             {/each}
         </datalist>
     </div>
@@ -104,7 +104,7 @@
         />
         <datalist id="tn-hist-vorgang-{uid}">
             {#each fieldHistory.get("vorgang") as opt}
-                <option value={opt} />
+                <option value={opt}></option>
             {/each}
         </datalist>
     </div>
@@ -125,7 +125,7 @@
         />
         <datalist id="tn-hist-taetigkeit-{uid}">
             {#each fieldHistory.get("taetigkeit") as opt}
-                <option value={opt} />
+                <option value={opt}></option>
             {/each}
         </datalist>
     </div>

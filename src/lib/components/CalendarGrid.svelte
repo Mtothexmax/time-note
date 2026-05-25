@@ -135,6 +135,7 @@
         booking?: string;
         onClick: () => void;
         onBookingPaste: (b: string) => void;
+        onDelete: () => void;
         zIndex: number;
         overlapEvents: { title: string; time: string; date: string; style: string; onClick: () => void }[];
     };
@@ -146,7 +147,7 @@
             const d = days[i];
             const dStr = formatDate(d);
             const slots: { id: string; startMin: number; endMin: number }[] = [];
-            const eventMap = new Map<string, { start: string; end: string; title: string; style: string; booking?: string; onClick: () => void; onBookingPaste: (b: string) => void }>();
+            const eventMap = new Map<string, { start: string; end: string; title: string; style: string; booking?: string; onClick: () => void; onBookingPaste: (b: string) => void; onDelete: () => void }>();
 
             // Work blocks
             const dayWorkData = calendarStore.workData[dStr] || [];
@@ -176,7 +177,7 @@
                     const isWorkBooked = unbookedMin === 0;
                     const wkStyle = isWorkBooked ? 'card-booked' : 'card-work';
                     const wkTitle = `ARBEIT: ${fullyBooked ? 'Gebucht' : '?'}`;
-                    eventMap.set(id, { start: w.start, end: w.end, title: wkTitle, style: wkStyle, booking: '', onClick: () => onOpenWork(dStr), onBookingPaste: (b: string) => { if (unbookedMin > 0) { const items = calendarStore.workDurationItems[dStr] || []; items.push({ durationMin: unbookedMin, booking: b }); calendarStore.workDurationItems[dStr] = items; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } } });
+                    eventMap.set(id, { start: w.start, end: w.end, title: wkTitle, style: wkStyle, booking: '', onClick: () => onOpenWork(dStr), onBookingPaste: (b: string) => { if (unbookedMin > 0) { const items = calendarStore.workDurationItems[dStr] || []; items.push({ durationMin: unbookedMin, booking: b }); calendarStore.workDurationItems[dStr] = items; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } }, onDelete: () => { calendarStore.workData[dStr] = (calendarStore.workData[dStr] || []).filter((_, i) => i !== wi); calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
                 }
             });
 
@@ -191,7 +192,7 @@
                     const manualDictBooking = getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject);
                     const effectiveBooking = manualDictBooking || m.booking;
                     const style = isManualOOO ? 'card-ooo' : (effectiveBooking ? 'card-booked' : 'card-manual');
-                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: effectiveBooking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } } });
+                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: effectiveBooking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } }, onDelete: () => { calendarStore.manualMeetings[dStr] = (calendarStore.manualMeetings[dStr] || []).filter(x => x.id !== m.id); calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
                 }
             });
 
@@ -212,7 +213,7 @@
                     const hasZNR = !!effectiveBooking;
                     const ooo = isOOO(ev.Subject, ev["Show time as"]);
                     const style = ooo ? 'card-ooo' : (isPause(ev.Subject) ? 'card-pause' : (hasZNR ? 'card-booked' : 'card-csv'));
-                    eventMap.set(id, { start: ev["Start Time"], end: ev["End Time"], title: ev.Subject, style, booking: effectiveBooking, onClick: () => onOpenMeeting(ev), onBookingPaste: (b: string) => { calendarStore.bookings[ev.id] = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
+                    eventMap.set(id, { start: ev["Start Time"], end: ev["End Time"], title: ev.Subject, style, booking: effectiveBooking, onClick: () => onOpenMeeting(ev), onBookingPaste: (b: string) => { calendarStore.bookings[ev.id] = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); }, onDelete: () => { calendarStore.events = calendarStore.events.filter(e => e.id !== ev.id); delete calendarStore.bookings[ev.id]; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
                 }
             });
 
@@ -252,6 +253,7 @@
                     booking: info.booking,
                     onClick: info.onClick,
                     onBookingPaste: info.onBookingPaste,
+                    onDelete: info.onDelete,
                     zIndex,
                     overlapEvents,
                 });
@@ -312,6 +314,7 @@
                     overlapEvents={ev.overlapEvents}
                     onclick={ev.onClick}
                     onBookingPaste={ev.onBookingPaste}
+                    onDelete={ev.onDelete}
                     {onOverlapMenu}
                 />
             {/each}
