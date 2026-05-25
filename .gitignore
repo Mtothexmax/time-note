@@ -25,3 +25,4 @@ vite.config.ts.timestamp-*
 # Export
 /time-note-export
 /time-note-export.html
+docs/

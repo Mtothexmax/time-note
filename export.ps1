@@ -63,7 +63,6 @@ try {
     Write-Host "=== Done! ===" -ForegroundColor Cyan
     $size = (Get-ChildItem 'docs' -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1KB
     Write-Host "Deployed to docs/ ($([math]::Round($size, 0)) KB)" -ForegroundColor Green
-    Write-Host "GitHub Pages URL: https://mtothexmax.github.io/time-note/" -ForegroundColor Green
 
 } finally {
     # Restore original config

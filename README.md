@@ -2,9 +2,6 @@
 
 Zeiterfassungs-Tool mit Kalender-Grid, Outlook-CSV-Import, Buchungsnummern-Dictionary und Check-in/Check-out.
 
-## Live
-
-[https://mtothexmax.github.io/time-note/](https://mtothexmax.github.io/time-note/)
 
 ## Dev
 
