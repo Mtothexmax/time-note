@@ -5,7 +5,6 @@
 // @version      3.9
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
-// @match        https://mtothexmax.github.io/time-note/*
 // @match        https://www.zep-online.de/zepintendgeoinformatik/*
 // @match        http://localhost:5173/*
 // @grant        GM_setValue
@@ -115,7 +114,11 @@
     // A native 'change' event is also dispatched so any other listeners fire.
     // ------------------------------------------------------------------
     function setSelect(selectEl, text) {
-        const opt = [...selectEl.options].find(o => o.text.trim() === text.trim());
+        const t = text.trim();
+        // "#<digits>" → match by option text containing the number (ZEP option text, not value attr)
+        const opt = /^#\d+$/.test(t)
+            ? [...selectEl.options].find(o => o.text.trim().includes(t.slice(1)))
+            : [...selectEl.options].find(o => o.text.trim() === t);
         if (!opt) return false;
         selectEl.value = opt.value;
         selectEl.dispatchEvent(new Event('change', { bubbles: true }));
@@ -131,11 +134,19 @@
     async function waitForOption(selectId, text, ms = 8000) {
         LOG(`Warte auf Option "${text}" in #${selectId} ...`);
         const end = Date.now() + ms;
+        const t = text.trim();
+        const byNum = /^#\d+$/.test(t);
+        const num = byNum ? t.slice(1) : null;
         while (Date.now() < end) {
             const sel = document.getElementById(selectId);
-            if (sel && [...sel.options].some(o => o.text.trim() === text.trim())) {
-                LOG(`Option "${text}" gefunden.`);
-                return document.getElementById(selectId);
+            if (sel) {
+                const found = byNum
+                    ? [...sel.options].some(o => o.text.trim().includes(num))
+                    : [...sel.options].some(o => o.text.trim() === t);
+                if (found) {
+                    LOG(`Option "${text}" gefunden.`);
+                    return document.getElementById(selectId);
+                }
             }
             await sleep(120);
         }
@@ -286,6 +297,47 @@
     }
 
     // ------------------------------------------------------------------
+    // Re-apply Tätigkeit silently after AJAX settle.
+    // ZEP's Vorgang onchange triggers refreshForm() AJAX which resets Tätigkeit
+    // to the dropdown default. We re-set the value directly and notify only
+    // select2's internal listener (change.select2) to avoid triggering another
+    // refreshForm() loop.
+    // ------------------------------------------------------------------
+    function reapplyTaetigkeit(eintrag) {
+        if (!eintrag['Tätigkeit']) return;
+        const sel = document.getElementById('taetigkeit');
+        if (!sel) return;
+        const t = eintrag['Tätigkeit'].trim();
+        const opt = [...sel.options].find(o => o.text.trim() === t);
+        if (!opt) { LOG('reapplyTaetigkeit: Option nicht gefunden:', t); return; }
+        sel.value = opt.value;
+        const jq = unsafeWindow.jQuery || unsafeWindow.$;
+        if (jq) jq(sel).trigger('change.select2');
+        LOG('reapplyTaetigkeit: neu gesetzt:', t);
+    }
+
+    // ------------------------------------------------------------------
+    // When Vorgang is a "#<number>" shorthand, prepend the matched option's
+    // description (leading number and all parentheses removed) to Bemerkung.
+    // Returns a shallow copy with augmented Bemerkung, or eintrag unchanged.
+    // ------------------------------------------------------------------
+    function augmentEintrag(eintrag) {
+        if (!/^#\d+$/.test((eintrag.Vorgang || '').trim())) return eintrag;
+        const sel = document.getElementById('vorgangId');
+        const optText = sel?.selectedOptions[0]?.text?.trim();
+        if (!optText) return eintrag;
+        // "334429 (KA.R.3: (CMP-00575) Realisierung)" → strip number, strip all parens
+        const description = optText
+            .replace(/^\d+\s*/, '')
+            .replace(/[()]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (!description) return eintrag;
+        const bem = typeof eintrag.Bemerkung === 'string' ? eintrag.Bemerkung : '';
+        return { ...eintrag, Bemerkung: bem ? `${description} - ${bem}` : description };
+    }
+
+    // ------------------------------------------------------------------
     // Set Dauer and Bemerkung — called AFTER cascade AJAX has settled.
     // ------------------------------------------------------------------
     function setFinalFields(eintrag) {
@@ -398,10 +450,12 @@
                         await fillEntry(datum, eintrag);
                         // Wait for Tätigkeit AJAX to fully settle before writing Dauer/Bemerkung.
                         await sleep(2000);
-                        setFinalFields(eintrag);
+                        reapplyTaetigkeit(eintrag);
+                        const augmented = augmentEintrag(eintrag);
+                        setFinalFields(augmented);
                         await sleep(300);
 
-                        const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
+                        const saveWait = waitForSave(augmented.Bemerkung || '', 15000);
                         await sleep(300);
                         clickSpeichern();
                         await saveWait;
@@ -493,9 +547,11 @@
                         try {
                             await fillEntry(datum, e);
                             await sleep(2000);
-                            setFinalFields(e);
+                            reapplyTaetigkeit(e);
+                            const augmentedE = augmentEintrag(e);
+                            setFinalFields(augmentedE);
                             await sleep(300);
-                            const saveWait = waitForSave(e.Bemerkung || '', 15000);
+                            const saveWait = waitForSave(augmentedE.Bemerkung || '', 15000);
                             await sleep(300);
                             clickSpeichern();
                             await saveWait;
@@ -535,10 +591,12 @@
                 try {
                     await fillEntry(datum, eintrag);
                     await sleep(2000);
-                    setFinalFields(eintrag);
+                    reapplyTaetigkeit(eintrag);
+                    const augmentedSingle = augmentEintrag(eintrag);
+                    setFinalFields(augmentedSingle);
                     await sleep(300);
 
-                    const saveWait = waitForSave(eintrag.Bemerkung || '', 15000);
+                    const saveWait = waitForSave(augmentedSingle.Bemerkung || '', 15000);
                     await sleep(300);
                     clickSpeichern();
                     await saveWait;

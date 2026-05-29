@@ -131,6 +131,7 @@
 
     let checkinCtx = $state<{ x: number; y: number } | null>(null);
     let checkinPasteOpen = $state(false);
+    let checkinAdjustMode = $state(false);
     let checkinPasteTime = $state('');
     let checkinPasteBooking = $state('');
     let dialogRef: HTMLDivElement | undefined = $state();
@@ -144,6 +145,7 @@
     function closeCheckinCtx() {
         checkinCtx = null;
         checkinPasteOpen = false;
+        checkinAdjustMode = false;
     }
 
     function openCheckinPaste() {
@@ -158,6 +160,16 @@
     }
 
     function confirmCheckinPaste() {
+        if (checkinAdjustMode) {
+            // Only update the check-in start time, no new time block created
+            const [h, m] = checkinPasteTime.split(':').map(Number);
+            const adjusted = new Date();
+            adjusted.setHours(h, m, 0, 0);
+            calendarStore.checkIn = adjusted.toISOString();
+            calendarStore.save();
+            closeCheckinCtx();
+            return;
+        }
         const today = formatDate(new Date());
         if (!calendarStore.workData[today]) calendarStore.workData[today] = [];
         calendarStore.workData[today].push({ start: checkinPasteTime, end: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), booking: '' });
@@ -223,25 +235,27 @@
     </div>
 
     <div class="flex items-center gap-2">
-        {#if calendarStore.checkIn}
-            <button onclick={() => calendarStore.checkOutNow()}
-                oncontextmenu={openCheckinCtx}
-                class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
-                style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border); cursor: pointer"
-                title="Eingecheckt seit {checkInArrival}"
-                onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-border)'}
-                onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-bg)'}>
-                <Square size={14} /> {checkInElapsed}h
-            </button>
-        {:else}
-            <button onclick={() => calendarStore.checkInNow()}
-                oncontextmenu={openCheckinCtx}
-                class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
-                style="background: var(--btn-checkin-bg); color: var(--btn-checkin-text); border-color: var(--btn-checkin-border); cursor: pointer"
-                onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-border)'}
-                onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-bg)'}>
-                <Play size={14} /> Einchecken
-            </button>
+        {#if calendarStore.checkinEnabled}
+            {#if calendarStore.checkIn}
+                <button onclick={() => calendarStore.checkOutNow()}
+                    oncontextmenu={openCheckinCtx}
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
+                    style="background: var(--btn-checkout-bg); color: var(--btn-checkout-text); border-color: var(--btn-checkout-border); cursor: pointer"
+                    title="Eingecheckt seit {checkInArrival}"
+                    onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-border)'}
+                    onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkout-bg)'}>
+                    <Square size={14} /> {checkInElapsed}h
+                </button>
+            {:else}
+                <button onclick={() => calendarStore.checkInNow()}
+                    oncontextmenu={openCheckinCtx}
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-xs font-bold border"
+                    style="background: var(--btn-checkin-bg); color: var(--btn-checkin-text); border-color: var(--btn-checkin-border); cursor: pointer"
+                    onmouseenter={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-border)'}
+                    onmouseleave={(e) => (e.target as HTMLElement).style.background = 'var(--btn-checkin-bg)'}>
+                    <Play size={14} /> Einchecken
+                </button>
+            {/if}
         {/if}
         <input type="file" id="csvInput" accept=".csv" class="hidden" onchange={handleFileUpload}>
         <label for="csvInput" class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition text-xs font-bold">
@@ -283,7 +297,7 @@
             style="color: var(--text-primary)"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
             onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-            onclick={() => { checkinCtx = null; checkinPasteTime = calendarStore.checkIn ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); checkinPasteBooking = ''; checkinPasteOpen = true; }}
+            onclick={() => { checkinCtx = null; checkinAdjustMode = true; checkinPasteTime = calendarStore.checkIn ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); checkinPasteBooking = ''; checkinPasteOpen = true; }}
         >
             <Play size={11} /> Anpassen
         </button>
@@ -306,18 +320,20 @@
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div bind:this={dialogRef} class="p-5 rounded-2xl shadow-2xl" style="background: var(--bg-card); border: 1px solid var(--border-main); min-width: 300px;" onclick={(e) => e.stopPropagation()}>
-            <div class="text-sm font-bold mb-3">Einchecken &amp; Einfügen</div>
+            <div class="text-sm font-bold mb-3">{checkinAdjustMode ? 'Check-In anpassen' : 'Einchecken & Einfügen'}</div>
             <div class="mb-3">
                 <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Gekommen</div>
                 <TimePicker value={checkinPasteTime} onChange={(v) => checkinPasteTime = v} />
             </div>
-            <div class="mb-3">
-                <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Buchung</div>
-                <BookingFields value={checkinPasteBooking} onChange={(v) => checkinPasteBooking = v} />
-            </div>
+            {#if !checkinAdjustMode}
+                <div class="mb-3">
+                    <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Buchung</div>
+                    <BookingFields value={checkinPasteBooking} onChange={(v) => checkinPasteBooking = v} />
+                </div>
+            {/if}
             <div class="flex gap-2">
                 <button onclick={closeCheckinCtx} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--bg-page); color: var(--text-muted)">Abbrechen</button>
-                <button onclick={confirmCheckinPaste} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--text-indigo); color: white">Einchecken &amp; Einfügen</button>
+                <button onclick={confirmCheckinPaste} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--text-indigo); color: white">{checkinAdjustMode ? 'Anpassen' : 'Einchecken & Einfügen'}</button>
             </div>
         </div>
     </div>

@@ -66,6 +66,7 @@ class CalendarStore {
     hideOOO            = $state<boolean>(false);
     hideWeekends       = $state<boolean>(true);
     checkIn            = $state<string | null>(null);
+    checkinEnabled     = $state<boolean>(false);
     bookingDict        = $state<Record<string, string>>({});
     dictRegexFlags     = $state<Record<string, boolean>>({});
     copiedBookingEntry = $state<Record<string, string> | null>(null);
@@ -86,6 +87,7 @@ class CalendarStore {
                 this.hideOOO        = d.hideOOO         ?? false;
                 this.hideWeekends   = d.hideWeekends    ?? true;
                 this.checkIn        = d.checkIn         ?? null;
+                this.checkinEnabled = d.checkinEnabled  ?? false;
                 this.bookingDict       = d.bookingDict       ?? {};
                 this.dictRegexFlags    = d.dictRegexFlags    ?? {};
                 this.workDurationItems = d.workDurationItems ?? {};
@@ -117,6 +119,7 @@ class CalendarStore {
             hideOOO:        this.hideOOO,
             hideWeekends:   this.hideWeekends,
             checkIn:        this.checkIn,
+            checkinEnabled: this.checkinEnabled,
             bookingDict:       this.bookingDict,
             dictRegexFlags:    this.dictRegexFlags,
             workDurationItems: this.workDurationItems,

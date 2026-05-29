@@ -2,7 +2,7 @@
 <script lang="ts">
     import { getGridRow, getGridOffset, getPreciseHeight, getDurationMin, formatDur, stripSeconds } from '$lib/utils/dateUtils';
     import { calendarStore } from '$lib/stores/calendarStore.svelte';
-    import { Layers, FileJson, ClipboardPaste } from 'lucide-svelte';
+    import { Layers, FileJson, ClipboardPaste, Trash2 } from 'lucide-svelte';
 
     let {
         start,
@@ -15,7 +15,8 @@
         overlapEvents = [] as { title: string; time: string; date: string; style: string; onClick: () => void }[],
         onclick,
         onOverlapMenu,
-        onBookingPaste
+        onBookingPaste,
+        onDelete
     } = $props<{
         start: string;
         end: string;
@@ -28,6 +29,7 @@
         onclick: () => void;
         onOverlapMenu?: (events: { title: string; time: string; date: string; style: string; onClick: () => void }[], x: number, y: number) => void;
         onBookingPaste?: (booking: string) => void;
+        onDelete?: () => void;
     }>();
 
     const startRow   = $derived(getGridRow(start));
@@ -147,6 +149,18 @@
         >
             <ClipboardPaste size={11} /> Einfügen
         </button>
+        {#if onDelete}
+            <div style="border-top: 1px solid var(--border-main); margin: 2px 0;"></div>
+            <button
+                class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+                style="color: #dc3545"
+                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                onclick={() => { onDelete(); closeCtxMenu(); }}
+            >
+                <Trash2 size={11} /> Löschen
+            </button>
+        {/if}
     </div>
 {/if}
 
