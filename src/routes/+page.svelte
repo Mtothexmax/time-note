@@ -144,7 +144,9 @@
 
     function openOverlapMenu(events: any[], x: number, y: number) {
         overlapMenuEvents = events;
-        overlapMenuPos = { x, y };
+        const menuW = 200;
+        const maxX = window.innerWidth - menuW - 8;
+        overlapMenuPos = { x: Math.min(x, maxX), y };
         overlapMenuOpen = true;
     }
 

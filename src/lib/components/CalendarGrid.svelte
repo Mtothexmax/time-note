@@ -67,25 +67,36 @@
         return `${String(h).padStart(2, '0')}:${m}`;
     }
 
+    let hoverPending = false;
+    let hoverLastCol = -1;
+    let hoverLastRow = -1;
+
     function onGridPointerMove(e: PointerEvent) {
         if (!gridEl || !scrollContainer) return;
+        if (hoverPending) return;
+        hoverPending = true;
+        requestAnimationFrame(() => { hoverPending = false; });
 
         const target = e.target as HTMLElement;
-        if (target.closest('.event-card-wrapper, .day-header, .overlap-indicator, .overlap-menu, .overlap-backdrop')) {
-            hoverVisible = false;
+        if (target.closest('.ghost-slot, .ghost-content, .ghost-plus, .ghost-time')) return;
+        if (target.closest('.event-card-wrapper, .event-card, .day-header, .overlap-indicator, .overlap-menu, .overlap-backdrop')) {
+            if (hoverLastCol >= 0) { hoverLastCol = -1; hoverLastRow = -1; hoverVisible = false; }
             return;
         }
 
-        const rect = gridEl.getBoundingClientRect();
-        const tCol = 30;
-        const colW = (rect.width - tCol) / dayCount;
-        const col = Math.floor(((e.clientX - rect.left) - tCol) / colW);
-        if (col < 0 || col >= dayCount) { hoverVisible = false; return; }
+        const cell = (e.target as HTMLElement).closest('.grid-cell');
+        if (!cell) return;
+        const gc = (cell as HTMLElement).style.gridColumn;
+        const col = parseInt(gc) - 2;
+        if (isNaN(col) || col < 0 || col >= dayCount) return;
 
-        const y = e.clientY - rect.top;
+        const y = e.clientY - gridEl.getBoundingClientRect().top;
         const row = Math.floor((y - 60) / 30) + 2;
-        if (row < 2 || row > 48) { hoverVisible = false; return; }
+        if (row < 2 || row > 48) return;
 
+        if (col === hoverLastCol && row === hoverLastRow) return;
+        hoverLastCol = col;
+        hoverLastRow = row;
         hoverCol = col;
         hoverRow = row;
         hoverVisible = true;
