@@ -56,10 +56,10 @@
         const parts = (booking || '').split(';');
         const entry: Record<string, string> = {
             Dauer: formatDur(durationMin),
-            Projekt: parts[0] || '',
-            Vorgang: parts[1] || '',
-            'Tätigkeit': parts[2] || '',
-            Bemerkung: parts[3] || ''
+            Projekt: parts[0] || title,
+            Vorgang: parts[1] || title,
+            'Tätigkeit': parts[2] || title,
+            Bemerkung: parts[3] || title
         };
         calendarStore.copiedBookingEntry = entry;
         navigator.clipboard.writeText(JSON.stringify(entry, null, 2)).catch(() => {});

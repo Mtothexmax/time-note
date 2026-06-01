@@ -205,6 +205,7 @@ class CalendarStore {
             return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` === dateStr;
         }).map(e => ({
             booking: this.getDictBooking(e.Subject) || this.bookings[e.id],
+            name:   e.Subject,
             dur:   getDurationMin(e["Start Time"], e["End Time"]),
             ooo:   e["Show time as"] === "4" || e.Subject.toLowerCase().includes("out of office") || e.Subject.toLowerCase().includes("ooo"),
             pause: e.Subject.toLowerCase().includes("pause"),
@@ -212,6 +213,7 @@ class CalendarStore {
 
         const dayManual = (this.manualMeetings[dateStr] || []).map(m => ({
             booking: getDictBooking(this.bookingDict, this.dictRegexFlags, m.subject) || m.booking,
+            name:   m.subject,
             dur:   getDurationMin(m.start, m.end),
             ooo:   m.subject.toLowerCase().includes("out of office") || m.subject.toLowerCase().includes("ooo"),
             pause: m.subject.toLowerCase().includes("pause"),
@@ -227,7 +229,8 @@ class CalendarStore {
             const rounded = roundTo15(m.dur);
             if (rounded <= 0) return;
             const parts = (m.booking || '').split(';');
-            entries.push({ Dauer: formatDur(rounded), Projekt: parts[0] || '', Vorgang: parts[1] || '', Tätigkeit: parts[2] || '', Bemerkung: parts[3] || '' });
+            const fallback = m.name || '';
+            entries.push({ Dauer: formatDur(rounded), Projekt: parts[0] || fallback, Vorgang: parts[1] || fallback, Tätigkeit: parts[2] || fallback, Bemerkung: parts[3] || fallback });
             accountedMin += rounded;
         });
 
