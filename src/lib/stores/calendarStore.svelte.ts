@@ -230,7 +230,7 @@ class CalendarStore {
             if (rounded <= 0) return;
             const parts = (m.booking || '').split(';');
             const fallback = m.name || '';
-            entries.push({ Dauer: formatDur(rounded), Projekt: parts[0] || fallback, Vorgang: parts[1] || fallback, Tätigkeit: parts[2] || fallback, Bemerkung: parts[3] || fallback });
+            entries.push({ Dauer: formatDur(rounded), Projekt: parts[0] || '', Vorgang: parts[1] || '', Tätigkeit: parts[2] || '', Bemerkung: parts[3] || fallback });
             accountedMin += rounded;
         });
 
