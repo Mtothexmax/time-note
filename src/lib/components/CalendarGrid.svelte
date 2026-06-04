@@ -168,10 +168,7 @@
             const totalDurMin = dayDurItems.reduce((s, d) => s + d.durationMin, 0);
             let totalBookedMeetingMin = 0;
             calendarStore.events.forEach(ev => {
-                const p = ev["Start Date"]?.split('-');
-                if (!p || p.length < 3) return;
-                const evDateStr = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
-                if (evDateStr !== dStr) return;
+                if (csvDateToISO(ev["Start Date"]) !== dStr) return;
                 const booking = calendarStore.bookings[ev.id] || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject);
                 if (booking) totalBookedMeetingMin += getDurationMin(ev["Start Time"], ev["End Time"]);
             });

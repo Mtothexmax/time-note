@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Time-Note ZEP Integrator
 // @namespace    http://tampermonkey.net/
-// @version      3.9
+// @version      4.0
 // @description  Empfängt Time-Note-Daten per CustomEvent und trägt sie in ZEP ein
 // @author       Time-Note
 // @match        https://www.zep-online.de/zepintendgeoinformatik/*
@@ -151,6 +151,19 @@
             await sleep(120);
         }
         throw new Error(`Timeout: Option "${text}" nicht in #${selectId} erschienen`);
+    }
+
+    // ------------------------------------------------------------------
+    // Wait for a CSS selector to appear in the DOM
+    // ------------------------------------------------------------------
+    async function waitForElement(selector, ms = 5000) {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            const el = document.querySelector(selector);
+            if (el) return el;
+            await sleep(150);
+        }
+        throw new Error(`Timeout: Element "${selector}" nicht erschienen`);
     }
 
     // ------------------------------------------------------------------
@@ -338,6 +351,23 @@
     }
 
     // ------------------------------------------------------------------
+    // Fill one entry end-to-end: cascade selects, re-apply Tätigkeit,
+    // augment Bemerkung, set final fields, save.
+    // ------------------------------------------------------------------
+    async function fillAndSave(datum, eintrag) {
+        await fillEntry(datum, eintrag);
+        await sleep(2000);
+        reapplyTaetigkeit(eintrag);
+        const augmented = augmentEintrag(eintrag);
+        setFinalFields(augmented);
+        await sleep(300);
+        const saveWait = waitForSave(augmented.Bemerkung || '', 15000);
+        await sleep(300);
+        clickSpeichern();
+        await saveWait;
+    }
+
+    // ------------------------------------------------------------------
     // Set Dauer and Bemerkung — called AFTER cascade AJAX has settled.
     // ------------------------------------------------------------------
     function setFinalFields(eintrag) {
@@ -399,212 +429,144 @@
     }
 
     // ------------------------------------------------------------------
-    // Main import loop — reads data from GM storage for current date
+    // Today as YYYY-MM-DD
     // ------------------------------------------------------------------
-    async function runImport() {
-        LOG('Import gestartet');
-        _statusLocked = false;
-        const statusEl = document.getElementById('tn-import-status');
-        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
-        const importBtn = document.getElementById('tn-import-btn');
-        if (importBtn) importBtn.disabled = true;
-
-        try {
-            const datum = getCurrentDate();
-            if (!datum) {
-                setStatus('Fehler: Datum nicht gefunden', 'error');
-                return;
-            }
-
-            const dataStr = GM_getValue('tn_' + datum);
-            LOG('[Import] GM_getValue("tn_' + datum + '"):', dataStr ? 'gefunden (' + dataStr.length + ' chars)' : 'NICHT GEFUNDEN');
-            if (!dataStr) {
-                setStatus('Keine Time-Note-Daten für ' + datum, 'error');
-                return;
-            }
-
-            let data;
-            try {
-                data = JSON.parse(dataStr);
-            } catch {
-                setStatus('Fehler: Ungültige gespeicherte Daten', 'error');
-                return;
-            }
-
-            if (!Array.isArray(data.Einträge) || !data.Einträge.length) {
-                setStatus('Keine Einträge für ' + datum, 'error');
-                return;
-            }
-
-            const n = data.Einträge.length;
-            let saved = 0;
-
-            for (let i = 0; i < n; i++) {
-                const eintrag = data.Einträge[i];
-                setStatus(`Importiere ${i + 1}/${n} ...`);
-                LOG(`--- Eintrag ${i + 1}/${n} ---`);
-
-                let lastErr = null;
-                for (let retry = 0; retry <= RETRY_COUNT; retry++) {
-                    try {
-                        await fillEntry(datum, eintrag);
-                        // Wait for Tätigkeit AJAX to fully settle before writing Dauer/Bemerkung.
-                        await sleep(2000);
-                        reapplyTaetigkeit(eintrag);
-                        const augmented = augmentEintrag(eintrag);
-                        setFinalFields(augmented);
-                        await sleep(300);
-
-                        const saveWait = waitForSave(augmented.Bemerkung || '', 15000);
-                        await sleep(300);
-                        clickSpeichern();
-                        await saveWait;
-
-                        lastErr = null;
-                        break;
-                    } catch (err) {
-                        LOG(`FEHLER Eintrag ${i + 1} (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
-                        lastErr = err;
-                        if (retry < RETRY_COUNT) {
-                            appendStatus(`Retry ${retry + 1}/${RETRY_COUNT}: ${err.message}`, 'error');
-                            _statusLocked = false;
-                            await sleep(2000);
-                        }
-                    }
-                }
-
-                if (lastErr) {
-                    LOG(`FEHLER Eintrag ${i + 1} nach ${RETRY_COUNT + 1} Versuchen:`, lastErr);
-                    setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${lastErr.message}`, 'error');
-                    return;
-                }
-
-                saved++;
-                LOG(`Eintrag ${i + 1} gespeichert ✓`);
-                setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
-
-                await sleep(500);
-            }
-
-            setStatus(`✓ ${saved} von ${n} Einträgen gespeichert`, 'success');
-        } finally {
-            if (importBtn) importBtn.disabled = false;
-        }
+    function todayISO() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
     // ------------------------------------------------------------------
-    // Clipboard import — reads a single JSON entry and fills + saves it
+    // Preview dialog — shows entries in a readable table before import.
+    // Resolves with { freigeben: bool } when confirmed, or null if cancelled.
     // ------------------------------------------------------------------
-    async function runClipboardImport() {
-        LOG('Clipboard-Import gestartet');
-        _statusLocked = false;
-        const statusEl = document.getElementById('tn-import-status');
-        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
-        const clipBtn = document.getElementById('tn-clipboard-btn');
-        if (clipBtn) clipBtn.disabled = true;
+    function showPreviewDialog(entries, datum) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
 
-        try {
-            const datum = getCurrentDate();
-            if (!datum) {
-                setStatus('Fehler: Datum nicht gefunden', 'error');
-                return;
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'background:#fff;border-radius:10px;padding:20px 24px;max-width:760px;width:92%;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.35);';
+
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = 'font-size:15px;font-weight:700;margin-bottom:14px;color:#111;';
+            const totalMin = entries.reduce((sum, e) => {
+                const parts = (e.Dauer || '').split(':').map(Number);
+                return sum + (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) ? parts[0] * 60 + parts[1] : 0);
+            }, 0);
+            const totalStr = totalMin > 0 ? `  ·  ${Math.floor(totalMin / 60)}:${String(totalMin % 60).padStart(2, '0')}h` : '';
+            titleEl.textContent = `Vorschau: ${datum}  (${entries.length} Eintrag${entries.length !== 1 ? 'e' : ''}${totalStr})`;
+
+            const table = document.createElement('table');
+            table.style.cssText = 'width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:16px;';
+
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headerRow.style.cssText = 'background:#f0f0f0;';
+            ['Dauer', 'Projekt', 'Vorgang', 'Tätigkeit', 'Bemerkung'].forEach(h => {
+                const th = document.createElement('th');
+                th.style.cssText = 'padding:6px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:600;color:#555;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap;';
+                th.textContent = h;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            entries.forEach((e, i) => {
+                const tr = document.createElement('tr');
+                tr.style.cssText = `border-bottom:1px solid #eee;${i % 2 === 1 ? 'background:#fafafa;' : ''}`;
+                const cells = [e.Dauer || '', e.Projekt || '', e.Vorgang || '', e['Tätigkeit'] || '', e.Bemerkung || ''];
+                cells.forEach((val, ci) => {
+                    const td = document.createElement('td');
+                    td.style.cssText = 'padding:7px 10px;vertical-align:top;' + (ci === 0 ? 'white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums;' : 'word-break:break-word;');
+                    td.textContent = val || '—';
+                    if (!val) td.style.color = '#bbb';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            const sep = document.createElement('div');
+            sep.style.cssText = 'border-top:1px solid #e5e5e5;margin:4px 0 14px;';
+
+            const checkWrapper = document.createElement('label');
+            checkWrapper.style.cssText = 'display:flex;align-items:center;gap:9px;margin-bottom:18px;cursor:pointer;font-size:13px;color:#333;user-select:none;';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.style.cssText = 'width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:#0d6efd;';
+            const checkLabel = document.createElement('span');
+            checkLabel.textContent = 'Bis heute freigeben, wenn es keine Fehler gibt';
+            checkWrapper.appendChild(checkbox);
+            checkWrapper.appendChild(checkLabel);
+
+            const btnRow = document.createElement('div');
+            btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Abbrechen';
+            cancelBtn.style.cssText = 'padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:6px;cursor:pointer;font-size:13px;color:#444;';
+
+            const okBtn = document.createElement('button');
+            okBtn.textContent = 'Importieren';
+            okBtn.style.cssText = 'padding:8px 18px;background:#0d6efd;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;';
+
+            function confirm() {
+                document.body.removeChild(overlay);
+                document.removeEventListener('keydown', keyHandler);
+                resolve({ freigeben: checkbox.checked });
+            }
+            function cancel() {
+                document.body.removeChild(overlay);
+                document.removeEventListener('keydown', keyHandler);
+                resolve(null);
             }
 
-            let text;
-            try {
-                text = await navigator.clipboard.readText();
-            } catch {
-                setStatus('Fehler: Kein Clipboard-Zugriff', 'error');
-                return;
+            cancelBtn.onclick = cancel;
+            okBtn.onclick = confirm;
+
+            function keyHandler(e) {
+                if (e.key === 'Escape') cancel();
+                if (e.key === 'Enter' && document.activeElement !== cancelBtn) confirm();
             }
+            document.addEventListener('keydown', keyHandler);
 
-            let eintrag;
-            try {
-                eintrag = JSON.parse(text);
-            } catch {
-                setStatus('Fehler: Kein gültiges JSON in Zwischenablage', 'error');
-                return;
-            }
+            btnRow.appendChild(cancelBtn);
+            btnRow.appendChild(okBtn);
+            dialog.appendChild(titleEl);
+            dialog.appendChild(table);
+            dialog.appendChild(sep);
+            dialog.appendChild(checkWrapper);
+            dialog.appendChild(btnRow);
+            overlay.appendChild(dialog);
+            // Close on backdrop click
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) cancel(); });
+            document.body.appendChild(overlay);
+            okBtn.focus();
+        });
+    }
 
-            if (!eintrag || typeof eintrag !== 'object') {
-                setStatus('Fehler: Ungültiges JSON-Format', 'error');
-                return;
-            }
+    // ------------------------------------------------------------------
+    // Import loop — runs all entries with retry, returns true on full success.
+    // ------------------------------------------------------------------
+    async function importEntries(datum, entries) {
+        const n = entries.length;
+        let saved = 0;
 
-            // Full day export: {Datum, Einträge: [...]}
-            if (Array.isArray(eintrag.Einträge) && eintrag.Einträge.length) {
-                LOG('Clipboard enthält Tages-Export mit', eintrag.Einträge.length, 'Einträgen');
-                const entries = eintrag.Einträge;
-                const n = entries.length;
-                let saved = 0;
-                for (let i = 0; i < n; i++) {
-                    const e = entries[i];
-                    setStatus(`Importiere ${i + 1}/${n} ...`);
-                    LOG(`--- Eintrag ${i + 1}/${n} ---`);
-
-                    let lastErr = null;
-                    for (let retry = 0; retry <= RETRY_COUNT; retry++) {
-                        try {
-                            await fillEntry(datum, e);
-                            await sleep(2000);
-                            reapplyTaetigkeit(e);
-                            const augmentedE = augmentEintrag(e);
-                            setFinalFields(augmentedE);
-                            await sleep(300);
-                            const saveWait = waitForSave(augmentedE.Bemerkung || '', 15000);
-                            await sleep(300);
-                            clickSpeichern();
-                            await saveWait;
-                            lastErr = null;
-                            break;
-                        } catch (err) {
-                            LOG(`FEHLER Eintrag ${i + 1} (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
-                            lastErr = err;
-                            if (retry < RETRY_COUNT) {
-                                appendStatus(`Retry ${retry + 1}/${RETRY_COUNT}: ${err.message}`, 'error');
-                                _statusLocked = false;
-                                await sleep(2000);
-                            }
-                        }
-                    }
-
-                    if (lastErr) {
-                        LOG(`FEHLER Eintrag ${i + 1} nach ${RETRY_COUNT + 1} Versuchen:`, lastErr);
-                        setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${lastErr.message}`, 'error');
-                        return;
-                    }
-
-                    saved++;
-                    setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
-                    await sleep(500);
-                }
-                setStatus(`✓ ${saved} von ${n} Einträgen gespeichert`, 'success');
-                return;
-            }
-
-            // Single entry: {Dauer, Projekt, Vorgang, Tätigkeit, Bemerkung}
-            setStatus('Importiere aus Zwischenablage ...');
-            LOG('Eintrag aus Clipboard:', eintrag);
+        for (let i = 0; i < n; i++) {
+            const eintrag = entries[i];
+            setStatus(`Importiere ${i + 1}/${n} ...`);
+            LOG(`--- Eintrag ${i + 1}/${n} ---`);
 
             let lastErr = null;
             for (let retry = 0; retry <= RETRY_COUNT; retry++) {
                 try {
-                    await fillEntry(datum, eintrag);
-                    await sleep(2000);
-                    reapplyTaetigkeit(eintrag);
-                    const augmentedSingle = augmentEintrag(eintrag);
-                    setFinalFields(augmentedSingle);
-                    await sleep(300);
-
-                    const saveWait = waitForSave(augmentedSingle.Bemerkung || '', 15000);
-                    await sleep(300);
-                    clickSpeichern();
-                    await saveWait;
-
+                    await fillAndSave(datum, eintrag);
                     lastErr = null;
                     break;
                 } catch (err) {
-                    LOG(`FEHLER Clipboard-Eintrag (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
+                    LOG(`FEHLER Eintrag ${i + 1} (Versuch ${retry + 1}/${RETRY_COUNT + 1}):`, err);
                     lastErr = err;
                     if (retry < RETRY_COUNT) {
                         appendStatus(`Retry ${retry + 1}/${RETRY_COUNT}: ${err.message}`, 'error');
@@ -615,13 +577,149 @@
             }
 
             if (lastErr) {
-                LOG('FEHLER Clipboard-Import nach allen Versuchen:', lastErr);
-                setStatus('Fehler: ' + lastErr.message, 'error');
+                LOG(`FEHLER Eintrag ${i + 1} nach ${RETRY_COUNT + 1} Versuchen:`, lastErr);
+                setStatus(`Fehler bei Eintrag ${i + 1}/${n}: ${lastErr.message}`, 'error');
+                return false;
+            }
+
+            saved++;
+            LOG(`Eintrag ${i + 1} gespeichert ✓`);
+            setStatus(`Gespeichert ${saved}/${n}`, saved === n ? 'success' : 'info');
+            await sleep(500);
+        }
+
+        setStatus(`✓ ${saved} von ${n} Einträgen gespeichert`, 'success');
+        return true;
+    }
+
+    // ------------------------------------------------------------------
+    // Click the Freigeben button, set date to today, confirm.
+    // 3 attempts. Only called when import succeeded without errors.
+    // ------------------------------------------------------------------
+    async function runFreigeben() {
+        LOG('Freigeben gestartet');
+        const today = todayISO();
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                if (attempt > 0) await sleep(1500);
+
+                // Find Freigeben button (lock icon in page header area)
+                const freigebenBtn = document.getElementById('link_1')
+                    || document.querySelector('i.icon-lock')?.closest('a');
+                if (!freigebenBtn) throw new Error('Freigeben-Button nicht gefunden');
+                LOG('Klicke Freigeben-Button ...');
+                freigebenBtn.click();
+
+                // Wait for popup with the Heute shortcut link
+                await waitForElement('#freigabedatum a[title="Heute"]', 5000);
+                await sleep(200);
+
+                // Click "Heute"
+                const heuteLink = document.querySelector('#freigabedatum a[title="Heute"]');
+                if (!heuteLink) throw new Error('"Heute"-Link im Popup nicht gefunden');
+                LOG('Klicke Heute ...');
+                heuteLink.click();
+                // preventDblClick delays 500ms, datepicker needs time to update hidden input
+                await sleep(800);
+
+                // Verify date was set correctly
+                const hiddenInput = document.querySelector('input[name="freigabedatum"]');
+                if (!hiddenInput) throw new Error('Freigabedatum-Feld nicht gefunden');
+                if (hiddenInput.value !== today) {
+                    throw new Error(`Datum falsch: "${hiddenInput.value}" (erwartet: "${today}")`);
+                }
+                LOG('Datum verifiziert:', hiddenInput.value);
+
+                // Click Speichern inside the popup
+                const popupSpeichern = document.querySelector('#zep-popup-content input[name="Speichern"]');
+                if (!popupSpeichern) throw new Error('Speichern-Button im Popup nicht gefunden');
+                LOG('Klicke Speichern im Popup ...');
+                popupSpeichern.click();
+
+                appendStatus(' · Freigegeben bis heute ✓', 'success');
+                LOG('Freigeben erfolgreich');
+                return;
+            } catch (err) {
+                LOG(`Freigeben Fehler (Versuch ${attempt + 1}/3):`, err);
+                if (attempt === 2) {
+                    appendStatus(` · Freigeben fehlgeschlagen: ${err.message}`, 'error');
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Main import loop — reads data from GM storage for current date
+    // ------------------------------------------------------------------
+    async function runImport() {
+        LOG('Import gestartet');
+        const importBtn = document.getElementById('tn-import-btn');
+        if (importBtn) importBtn.disabled = true;
+
+        try {
+            const datum = getCurrentDate();
+            if (!datum) { setStatus('Fehler: Datum nicht gefunden', 'error'); return; }
+
+            const dataStr = GM_getValue('tn_' + datum);
+            LOG('[Import] GM_getValue("tn_' + datum + '"):', dataStr ? 'gefunden (' + dataStr.length + ' chars)' : 'NICHT GEFUNDEN');
+            if (!dataStr) { setStatus('Keine Time-Note-Daten für ' + datum, 'error'); return; }
+
+            let data;
+            try { data = JSON.parse(dataStr); } catch { setStatus('Fehler: Ungültige gespeicherte Daten', 'error'); return; }
+
+            if (!Array.isArray(data.Einträge) || !data.Einträge.length) {
+                setStatus('Keine Einträge für ' + datum, 'error');
                 return;
             }
 
-            setStatus('✓ Eintrag aus Zwischenablage gespeichert', 'success');
-            LOG('Clipboard-Eintrag gespeichert ✓');
+            const confirmed = await showPreviewDialog(data.Einträge, datum);
+            if (!confirmed) return;
+
+            _statusLocked = false;
+            const statusEl = document.getElementById('tn-import-status');
+            if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
+
+            const success = await importEntries(datum, data.Einträge);
+            if (success && confirmed.freigeben) await runFreigeben();
+        } finally {
+            if (importBtn) importBtn.disabled = false;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Clipboard import — reads a single JSON entry or full day export
+    // ------------------------------------------------------------------
+    async function runClipboardImport() {
+        LOG('Clipboard-Import gestartet');
+        const clipBtn = document.getElementById('tn-clipboard-btn');
+        if (clipBtn) clipBtn.disabled = true;
+
+        try {
+            const datum = getCurrentDate();
+            if (!datum) { setStatus('Fehler: Datum nicht gefunden', 'error'); return; }
+
+            let text;
+            try { text = await navigator.clipboard.readText(); } catch { setStatus('Fehler: Kein Clipboard-Zugriff', 'error'); return; }
+
+            let parsed;
+            try { parsed = JSON.parse(text); } catch { setStatus('Fehler: Kein gültiges JSON in Zwischenablage', 'error'); return; }
+
+            if (!parsed || typeof parsed !== 'object') { setStatus('Fehler: Ungültiges JSON-Format', 'error'); return; }
+
+            const entries = Array.isArray(parsed.Einträge) && parsed.Einträge.length
+                ? parsed.Einträge
+                : [parsed];
+
+            const confirmed = await showPreviewDialog(entries, datum);
+            if (!confirmed) return;
+
+            _statusLocked = false;
+            const statusEl = document.getElementById('tn-import-status');
+            if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
+
+            const success = await importEntries(datum, entries);
+            if (success && confirmed.freigeben) await runFreigeben();
         } catch (err) {
             LOG('FEHLER Clipboard-Import:', err);
             setStatus('Fehler: ' + err.message, 'error');

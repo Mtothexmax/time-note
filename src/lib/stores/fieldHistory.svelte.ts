@@ -27,10 +27,7 @@ class FieldHistoryStore {
         if (!v) return;
         const existing = this.#data[field] ?? [];
         if (existing[0] === v) return;
-        this.#data = {
-            ...this.#data,
-            [field]: [v, ...existing.filter((x) => x !== v)].slice(0, MAX_ENTRIES),
-        };
+        this.#data[field] = [v, ...existing.filter((x) => x !== v)].slice(0, MAX_ENTRIES);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.#data));
     }
 }
