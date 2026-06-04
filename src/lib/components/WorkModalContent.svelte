@@ -279,7 +279,15 @@
             {#each durItems as d, i}
                 <div class="p-3 rounded-xl flex flex-col" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border); box-sizing: border-box; min-width: 0;">
                     <div class="flex items-center gap-1 mb-2">
-                        <DurationPicker value={d.durationMin} onChange={(v) => d.durationMin = v} />
+                        <DurationPicker value={d.durationMin} onChange={(v) => d.durationMin = v} allowTyping={true} />
+                        {#if unbookedMin > 0}
+                            <button
+                                onclick={() => d.durationMin += unbookedMin}
+                                title="Ungebuchte Zeit hinzufügen ({formatDur(unbookedMin)}h)"
+                                class="text-[9px] px-1.5 py-0.5 rounded font-bold transition-opacity"
+                                style="background: var(--text-indigo); color: white; opacity: 0.75; white-space: nowrap; flex-shrink: 0;"
+                            >+{formatDur(unbookedMin)}</button>
+                        {/if}
                         <button onclick={() => removeDurationItem(i)} class="ml-auto transition-colors" style="color: var(--text-muted)" title="Entfernen">
                             <Trash2 size={12} />
                         </button>

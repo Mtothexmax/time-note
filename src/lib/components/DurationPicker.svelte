@@ -1,8 +1,9 @@
 
 <script lang="ts">
-    let { value, onChange } = $props<{ value: number; onChange: (v: number) => void }>();
+    let { value, onChange, allowTyping = false } = $props<{ value: number; onChange: (v: number) => void; allowTyping?: boolean }>();
 
     let open = $state(false);
+    let inputEl: HTMLInputElement | undefined = $state();
     const hours = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     const mins = ['00', '15', '30', '45'];
 
@@ -16,7 +17,28 @@
         open = false;
     }
 
+    function parseTyped(raw: string): number | null {
+        const s = raw.replace(/h$/i, '').trim();
+        if (s.includes(':')) {
+            const [hStr, mStr] = s.split(':');
+            const h = parseInt(hStr, 10), m = parseInt(mStr, 10);
+            if (!isNaN(h) && !isNaN(m) && m >= 0 && m < 60) return h * 60 + m;
+        } else {
+            const n = parseFloat(s);
+            if (!isNaN(n) && n >= 0) return Math.round(n * 60);
+        }
+        return null;
+    }
+
     function onFocus() { open = true; }
+
+    function onBlur() {
+        if (allowTyping && inputEl) {
+            const parsed = parseTyped(inputEl.value);
+            if (parsed !== null && parsed > 0) onChange(parsed);
+        }
+        setTimeout(() => { open = false; }, 180);
+    }
 
     function onOutsideClick(e: MouseEvent) {
         if (!(e.target as HTMLElement).closest('.tn-durationpicker')) open = false;
@@ -26,11 +48,11 @@
 <svelte:window onclick={onOutsideClick} />
 
 <div class="tn-durationpicker" style="position: relative; display: inline-block;">
-    <input type="text" value={displayVal} readonly
+    <input bind:this={inputEl} type="text" value={displayVal} readonly={!allowTyping}
         class="duration-input"
         onfocus={onFocus}
-        onblur={() => { setTimeout(() => { open = false; }, 180); }}
-        style="background: var(--input-bg); border: 2px solid var(--input-border); color: var(--input-text);">
+        onblur={onBlur}
+        style="background: var(--input-bg); border: 2px solid var(--input-border); color: var(--input-text); {allowTyping ? 'cursor: text;' : ''}">
     {#if open}
         <div class="grid-dropdown active">
             {#each hours as h}
