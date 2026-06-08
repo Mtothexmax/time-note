@@ -339,10 +339,11 @@
         const sel = document.getElementById('vorgangId');
         const optText = sel?.selectedOptions[0]?.text?.trim();
         if (!optText) return eintrag;
-        // "334429 (KA.R.3: (CMP-00575) Realisierung)" → strip number, strip all parens
+        // "334429 (KA.R.3: (AC-01200) Realisierung)" → strip leading number, strip only outermost parens
         const description = optText
             .replace(/^\d+\s*/, '')
-            .replace(/[()]/g, '')
+            .trim()
+            .replace(/^\((.+)\)$/, '$1')
             .replace(/\s+/g, ' ')
             .trim();
         if (!description) return eintrag;
