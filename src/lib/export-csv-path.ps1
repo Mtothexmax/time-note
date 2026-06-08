@@ -21,7 +21,7 @@ try {
     $von = (Get-Date).AddDays(-$TageVorher)
     $bis = (Get-Date).AddDays($TageNachher)
 
-    Write-Host "MAPI OK — Kalender: '$($kalender.Name)', Items: $($kalender.Items.Count)"
+    Write-Host "MAPI OK - Kalender: '$($kalender.Name)', Items: $($kalender.Items.Count)"
     Write-Host "Zeitraum: $($von.ToString('dd.MM.yyyy')) bis $($bis.ToString('dd.MM.yyyy'))"
 
     $zeilen = [System.Collections.Generic.List[string]]::new()
@@ -70,7 +70,7 @@ try {
     $zeilen | Out-File -FilePath $AusgabePfad -Encoding UTF8 -Force
     $AusgabePfad | Set-Clipboard
     Write-Host "Exportiert nach: $AusgabePfad"
-    Write-Host "Pfad kopiert — jetzt in Time-Note einfuegen."
+    Write-Host "Pfad kopiert - jetzt in Time-Note einfuegen."
 } catch {
     Write-Error "Fehler: $($_.Exception.Message)"
 }
