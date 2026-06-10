@@ -7,10 +7,11 @@
     import { getDurationMin, formatDur, toMinutes } from '$lib/utils/dateUtils';
     import { calendarStore, getDictBooking, type WorkInterval, type DurationItem } from '$lib/stores/calendarStore.svelte';
 
-    let { intervals, dateStr, onSave } = $props<{
+    let { intervals, dateStr, onSave, checkedIn = false } = $props<{
         intervals: WorkInterval[];
         dateStr: string;
         onSave: (intervals: WorkInterval[], durationItems: DurationItem[]) => void;
+        checkedIn?: boolean;
     }>();
 
     let local = $state(intervals.map(clone));
@@ -217,7 +218,11 @@
                     <div class="flex items-center gap-1">
                         <TimePicker value={w.start} onChange={(v) => w.start = v} />
                         <span style="color: var(--text-muted); font-size: 13px; font-weight: 600;">–</span>
-                        <TimePicker value={w.end} onChange={(v) => w.end = v} minTime={w.start} />
+                        {#if checkedIn && i === local.length - 1}
+                            <span class="text-xs font-bold px-2" style="color: var(--text-muted); opacity: 0.5;" title="Endzeit läuft noch">–:––</span>
+                        {:else}
+                            <TimePicker value={w.end} onChange={(v) => w.end = v} minTime={w.start} />
+                        {/if}
                         <button onclick={() => removeInterval(i)} class="ml-auto transition-colors" style="color: var(--text-muted)" title="Intervall entfernen">
                             <Trash2 size={12} />
                         </button>

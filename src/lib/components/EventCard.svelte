@@ -78,15 +78,17 @@
     }
 
     async function openPaste() {
-        if (calendarStore.copiedBookingEntry) {
-            applyEntry(calendarStore.copiedBookingEntry);
-            return;
-        }
         try {
             const text = await navigator.clipboard.readText();
             const parsed = JSON.parse(text);
-            if (parsed && typeof parsed === 'object') applyEntry(parsed);
+            if (parsed && typeof parsed === 'object') {
+                applyEntry(parsed);
+                return;
+            }
         } catch {}
+        if (calendarStore.copiedBookingEntry) {
+            applyEntry(calendarStore.copiedBookingEntry);
+        }
         closeCtxMenu();
     }
 

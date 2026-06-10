@@ -172,7 +172,13 @@ class CalendarStore {
         const dStr   = formatDate(arrive);
         const fmt    = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         if (!this.workData[dStr]) this.workData[dStr] = [];
-        this.workData[dStr].push({ start: fmt(arrive), end: fmt(leave), booking: '' });
+        const intervals = this.workData[dStr];
+        const last = intervals[intervals.length - 1];
+        if (last && last.end === '') {
+            last.end = fmt(leave);
+        } else {
+            intervals.push({ start: fmt(arrive), end: fmt(leave), booking: '' });
+        }
         this.checkIn = null;
         this.save();
         this.dispatchDayEvent(dStr);

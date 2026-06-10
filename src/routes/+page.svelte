@@ -133,6 +133,16 @@
     function saveWork(intervals: any[], durationItems: { durationMin: number; booking: string }[]) {
         calendarStore.workData[workModal.dateStr] = intervals.map(i => ({ start: i.start, end: i.end, booking: i.booking }));
         calendarStore.workDurationItems[workModal.dateStr] = durationItems.map(d => ({ durationMin: d.durationMin, booking: d.booking }));
+        if (calendarStore.checkIn && workModal.dateStr === formatDate(new Date())) {
+            const saved = calendarStore.workData[workModal.dateStr];
+            const last = saved[saved.length - 1];
+            if (last && last.end === '') {
+                const [h, m] = last.start.split(':').map(Number);
+                const t = new Date();
+                t.setHours(h, m, 0, 0);
+                calendarStore.checkIn = t.toISOString();
+            }
+        }
         calendarStore.save();
         if (workModal.dateStr) calendarStore.dispatchDayEvent(workModal.dateStr);
         workModal.isOpen = false;
@@ -202,7 +212,30 @@
 </script>
 
 <div class="w-full p-4 h-screen flex flex-col overflow-hidden">
-    <Header onOpenBookingDict={openDict} />
+    <Header onOpenBookingDict={openDict} onOpenWork={(d) => {
+        const src = calendarStore.workData[d];
+        const durSrc = calendarStore.workDurationItems[d];
+        const isCheckedInToday = d === formatDate(new Date()) && !!calendarStore.checkIn;
+        let intervals: { start: string; end: string; booking: string }[];
+        if (src && src.length > 0) {
+            intervals = src.map(w => ({ start: w.start, end: w.end, booking: w.booking }));
+            if (isCheckedInToday && intervals[intervals.length - 1].end !== '') {
+                const arrive = new Date(calendarStore.checkIn!);
+                intervals.push({ start: `${String(arrive.getHours()).padStart(2,'0')}:${String(arrive.getMinutes()).padStart(2,'0')}`, end: '', booking: '' });
+            }
+        } else if (isCheckedInToday) {
+            const arrive = new Date(calendarStore.checkIn!);
+            intervals = [{ start: `${String(arrive.getHours()).padStart(2,'0')}:${String(arrive.getMinutes()).padStart(2,'0')}`, end: '', booking: '' }];
+        } else {
+            intervals = [];
+        }
+        workModal = {
+            isOpen: true,
+            dateStr: d,
+            intervals,
+            durationItems: durSrc ? durSrc.map(x => ({ ...x })) : []
+        };
+    }} />
 
     <CalendarGrid 
         onOpenMeeting={openMeetingModal}
@@ -256,10 +289,11 @@
     widthClass="max-w-4xl"
     onClose={() => workModal.isOpen = false}
 >
-    <WorkModalContent 
+    <WorkModalContent
         intervals={workModal.intervals}
         dateStr={workModal.dateStr}
         onSave={saveWork}
+        checkedIn={workModal.dateStr === formatDate(new Date()) && !!calendarStore.checkIn}
     />
 </Modal>
 

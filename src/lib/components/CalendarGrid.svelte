@@ -199,7 +199,7 @@
                     slots.push({ id, startMin: sm, endMin: em });
                     const manualDictBooking = getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject);
                     const effectiveBooking = manualDictBooking || m.booking;
-                    const style = isManualOOO ? 'card-ooo' : (isPause(m.subject) ? 'card-pause' : (effectiveBooking ? 'card-booked' : 'card-manual'));
+                    const style = isManualOOO ? 'card-ooo' : (isPause(m.subject) ? 'card-ooo' : (effectiveBooking ? 'card-booked' : 'card-manual'));
                     eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: effectiveBooking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } }, onDelete: () => { calendarStore.manualMeetings[dStr] = (calendarStore.manualMeetings[dStr] || []).filter(x => x.id !== m.id); calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
                 }
             });

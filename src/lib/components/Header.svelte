@@ -1,13 +1,11 @@
 
 <script lang="ts">
-    import { ChevronLeft, ChevronRight, Upload, Download, Trash2, Play, Square, BookOpen, Info, ClipboardPaste } from 'lucide-svelte';
-    import BookingFields from './BookingFields.svelte';
-    import TimePicker from './TimePicker.svelte';
+    import { ChevronLeft, ChevronRight, Upload, Download, Trash2, Play, Square, BookOpen, Info } from 'lucide-svelte';
     import { calendarStore, getDictBooking, type WorkInterval, type DurationItem } from '$lib/stores/calendarStore.svelte';
     import { formatDate, getDurationMin, toMinutes, csvDateToISO } from '$lib/utils/dateUtils';
     import InfoModal from './InfoModal.svelte';
 
-    let { onOpenBookingDict } = $props<{ onOpenBookingDict?: () => void }>();
+    let { onOpenBookingDict, onOpenWork } = $props<{ onOpenBookingDict?: () => void; onOpenWork?: (dateStr: string) => void }>();
     let infoOpen = $state(false);
 
     // Ticks every 30s so the counter stays live
@@ -130,10 +128,6 @@
     }
 
     let checkinCtx = $state<{ x: number; y: number } | null>(null);
-    let checkinMode = $state<'adjust' | 'insert' | null>(null);
-    let checkinPasteTime = $state('');
-    let checkinPasteBooking = $state('');
-    let dialogRef: HTMLDivElement | undefined = $state();
 
     function openCheckinCtx(e: MouseEvent) {
         e.preventDefault();
@@ -143,65 +137,11 @@
 
     function closeCheckinCtx() {
         checkinCtx = null;
-        checkinMode = null;
-    }
-
-    function currentTimeStr() {
-        return new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     }
 
     function openCheckinAdjust() {
         checkinCtx = null;
-        checkinPasteTime = calendarStore.checkIn
-            ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-            : currentTimeStr();
-        checkinPasteBooking = '';
-        checkinMode = 'adjust';
-    }
-
-    function openCheckinPaste() {
-        checkinCtx = null;
-        checkinPasteTime = calendarStore.checkIn
-            ? new Date(calendarStore.checkIn).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-            : currentTimeStr();
-        checkinPasteBooking = calendarStore.copiedBookingEntry
-            ? [calendarStore.copiedBookingEntry.Projekt || '', calendarStore.copiedBookingEntry.Vorgang || '', calendarStore.copiedBookingEntry['Tätigkeit'] || '', calendarStore.copiedBookingEntry.Bemerkung || ''].join(';')
-            : '';
-        checkinMode = 'insert';
-    }
-
-    function confirmCheckinPaste() {
-        if (checkinMode === 'adjust') {
-            const [h, m] = checkinPasteTime.split(':').map(Number);
-            const adjusted = new Date();
-            adjusted.setHours(h, m, 0, 0);
-            calendarStore.checkIn = adjusted.toISOString();
-            calendarStore.save();
-            closeCheckinCtx();
-            return;
-        }
-        const today = formatDate(new Date());
-        if (!calendarStore.workData[today]) calendarStore.workData[today] = [];
-        calendarStore.workData[today].push({ start: checkinPasteTime, end: currentTimeStr(), booking: '' });
-        const unbooked = (calendarStore.workData[today] || []).reduce((s, w) => s + getDurationMin(w.start, w.end), 0)
-            - (calendarStore.workDurationItems[today] || []).reduce((s, d) => s + d.durationMin, 0);
-        let bookedMeetingMin = 0;
-        calendarStore.events.forEach(ev => {
-            if (csvDateToISO(ev["Start Date"]) !== today) return;
-            if (calendarStore.bookings[ev.id] || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject)) bookedMeetingMin += getDurationMin(ev["Start Time"], ev["End Time"]);
-        });
-        (calendarStore.manualMeetings[today] || []).forEach(m => {
-            if (m.booking || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject)) bookedMeetingMin += getDurationMin(m.start, m.end);
-        });
-        const unbookedMin = Math.max(0, unbooked - bookedMeetingMin);
-        if (unbookedMin > 0 && checkinPasteBooking) {
-            const items = calendarStore.workDurationItems[today] || [];
-            items.push({ durationMin: unbookedMin, booking: checkinPasteBooking });
-            calendarStore.workDurationItems[today] = items;
-        }
-        calendarStore.save();
-        calendarStore.dispatchDayEvent(today);
-        closeCheckinCtx();
+        onOpenWork?.(formatDate(new Date()));
     }
 </script>
 
@@ -287,7 +227,7 @@
     </div>
 </header>
 
-{#if checkinCtx && checkinMode === null}
+{#if checkinCtx}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="fixed inset-0 z-[9998]" onclick={closeCheckinCtx}></div>
@@ -306,41 +246,6 @@
         >
             <Play size={11} /> Anpassen
         </button>
-        <button
-            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
-            style="color: var(--text-primary)"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-            onclick={openCheckinPaste}
-        >
-            <ClipboardPaste size={11} /> Einfügen
-        </button>
-    </div>
-{/if}
-
-{#if checkinMode !== null}
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="fixed inset-0 z-[2000] flex items-center justify-center" style="background: rgba(0,0,0,0.45);" onclick={(e) => { if (dialogRef && !dialogRef.contains(e.target as Node)) closeCheckinCtx(); }}>
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div bind:this={dialogRef} class="p-5 rounded-2xl shadow-2xl" style="background: var(--bg-card); border: 1px solid var(--border-main); min-width: 300px;" onclick={(e) => e.stopPropagation()}>
-            <div class="text-sm font-bold mb-3">{checkinMode === 'adjust' ? 'Check-In anpassen' : 'Einchecken & Einfügen'}</div>
-            <div class="mb-3">
-                <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Gekommen</div>
-                <TimePicker value={checkinPasteTime} onChange={(v) => checkinPasteTime = v} />
-            </div>
-            {#if checkinMode === 'insert'}
-                <div class="mb-3">
-                    <div class="text-[9px] font-bold uppercase mb-1.5" style="color: var(--text-muted)">Buchung</div>
-                    <BookingFields value={checkinPasteBooking} onChange={(v) => checkinPasteBooking = v} />
-                </div>
-            {/if}
-            <div class="flex gap-2">
-                <button onclick={closeCheckinCtx} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--bg-page); color: var(--text-muted)">Abbrechen</button>
-                <button onclick={confirmCheckinPaste} class="flex-1 py-2 rounded-xl text-xs font-bold" style="background: var(--text-indigo); color: white">{checkinMode === 'adjust' ? 'Anpassen' : 'Einchecken & Einfügen'}</button>
-            </div>
-        </div>
     </div>
 {/if}
 
