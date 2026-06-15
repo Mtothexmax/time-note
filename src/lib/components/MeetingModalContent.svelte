@@ -8,7 +8,8 @@
     let {
         meetingData,
         onSave,
-        onDelete
+        onDelete,
+        onDeleteFuture
     } = $props<{
         meetingData: {
             id?: string;
@@ -19,6 +20,7 @@
         };
         onSave: (data: any) => void;
         onDelete?: () => void;
+        onDeleteFuture?: () => void;
     }>();
 
     let localData = $state({ ...meetingData });
@@ -26,6 +28,14 @@
     $effect(() => {
         localData = { ...meetingData };
     });
+
+    let deleteCtx = $state<{ x: number; y: number } | null>(null);
+
+    function openDeleteCtx(e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteCtx = { x: e.clientX, y: e.clientY };
+    }
 
     function copyBooking() {
         const parts = (localData.booking || '').split(';');
@@ -71,7 +81,13 @@
 
     <div class="flex gap-2 mt-6">
         {#if onDelete}
-            <button onclick={onDelete} class="p-3 rounded-xl transition-colors" title="Meeting löschen" style="color: var(--btn-checkout-text); background: var(--btn-checkout-bg); border: 1px solid var(--btn-checkout-border)">
+            <button
+                onclick={onDelete}
+                oncontextmenu={openDeleteCtx}
+                class="p-3 rounded-xl transition-colors"
+                title="Meeting löschen · Rechtsklick für weitere Optionen"
+                style="color: var(--btn-checkout-text); background: var(--btn-checkout-bg); border: 1px solid var(--btn-checkout-border)"
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
         {/if}
@@ -86,3 +102,28 @@
         </button>
     </div>
 </div>
+
+{#if deleteCtx}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 z-[9998]" onclick={() => deleteCtx = null}></div>
+    <div
+        class="fixed z-[9999] rounded-lg shadow-xl py-1 min-w-[220px]"
+        style="top: {deleteCtx.y}px; left: {deleteCtx.x}px; background: var(--bg-card); border: 1px solid var(--border-main);"
+    >
+        <div class="px-2 py-1 text-[9px] font-black uppercase tracking-wider" style="color: var(--text-muted)">Löschen</div>
+        <div style="border-top: 1px solid var(--border-main); margin: 2px 0;"></div>
+        {#if onDeleteFuture}
+            <button
+                class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+                style="color: var(--btn-checkout-text)"
+                title="Löscht alle Termine mit dem gleichen Namen ab diesem Datum"
+                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                onclick={() => { onDeleteFuture!(); deleteCtx = null; }}
+            >
+                Ab hier alle gleichen löschen
+            </button>
+        {/if}
+    </div>
+{/if}

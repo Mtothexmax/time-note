@@ -130,6 +130,31 @@
         }
     }
 
+    function deleteFutureMeetings() {
+        const subject = meetingModal.data.subject;
+        const fromDate = meetingModal.dateStr;
+        if (meetingModal.isManual) {
+            Object.keys(calendarStore.manualMeetings).forEach(dStr => {
+                if (dStr >= fromDate) {
+                    calendarStore.manualMeetings[dStr] = (calendarStore.manualMeetings[dStr] || []).filter(m => m.subject !== subject);
+                }
+            });
+        } else {
+            const toDelete = new Set<string>();
+            calendarStore.events = calendarStore.events.filter(ev => {
+                if (ev.Subject !== subject) return true;
+                const p = ev["Start Date"].split('-');
+                const evDateStr = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+                if (evDateStr >= fromDate) { toDelete.add(evDateStr); return false; }
+                return true;
+            });
+            toDelete.forEach(d => calendarStore.dispatchDayEvent(d));
+        }
+        calendarStore.save();
+        calendarStore.dispatchDayEvent(fromDate);
+        meetingModal.isOpen = false;
+    }
+
     function saveWork(intervals: any[], durationItems: { durationMin: number; booking: string }[]) {
         calendarStore.workData[workModal.dateStr] = intervals.map(i => ({ start: i.start, end: i.end, booking: i.booking }));
         calendarStore.workDurationItems[workModal.dateStr] = durationItems.map(d => ({ durationMin: d.durationMin, booking: d.booking }));
@@ -252,10 +277,11 @@
     onTitleChange={(v) => meetingModal.data.subject = v}
     onClose={() => meetingModal.isOpen = false}
 >
-    <MeetingModalContent 
+    <MeetingModalContent
         meetingData={meetingModal.data}
         onSave={saveMeeting}
         onDelete={deleteMeeting}
+        onDeleteFuture={deleteFutureMeetings}
     />
 </Modal>
 
