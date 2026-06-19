@@ -1,5 +1,7 @@
 
 <script lang="ts">
+    import { tick } from 'svelte';
+
     let { value, onChange, minTime } = $props<{ value: string; onChange: (v: string) => void; minTime?: string }>();
 
     let open = $state(false);
@@ -9,6 +11,11 @@
     const displayVal = $derived(value ? value.split(':').slice(0, 2).join(':') : '');
     const selHour = $derived(displayVal.split(':')[0] ?? '');
     const selMin = $derived(displayVal.split(':')[1] ?? '');
+
+    // Tracks the intended cursor position across async state updates.
+    // Reading selectionStart after onChange is unreliable because Svelte may
+    // have moved the cursor to the end while flushing the value update.
+    let pendingCursor = -1;
 
     function toMinutes(t: string): number {
         const [h, m] = t.split(':').map(Number);
@@ -33,22 +40,28 @@
         open = false;
     }
 
-    function onKeydown(e: KeyboardEvent) {
-        if (e.key === 'Backspace' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab' || e.key === 'Enter') return;
+    async function onKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter') { open = false; return; }
+        if (e.key === 'Backspace' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab') return;
         if (e.key === 'Escape') { open = false; return; }
         if (!/^[0-9]$/.test(e.key)) { if (e.key.length === 1) e.preventDefault(); return; }
         e.preventDefault();
-        let pos = inputEl.selectionStart ?? 0;
+        // Use pending cursor if set (avoids reading stale selectionStart after rapid typing)
+        let pos = pendingCursor >= 0 ? pendingCursor : (inputEl.selectionStart ?? 0);
         if (pos === 2) pos = 3;
         if (pos >= 5) return;
-        let arr = value.split('');
+        const base = (value && value.length === 5 && value[2] === ':') ? value : '00:00';
+        const arr = base.split('');
         arr[pos] = e.key;
         arr[2] = ':';
         const newVal = arr.join('');
-        onChange(newVal);
         let next = pos + 1;
         if (next === 2) next = 3;
-        requestAnimationFrame(() => inputEl.setSelectionRange(next, next));
+        pendingCursor = next;
+        onChange(newVal);
+        await tick();
+        if (inputEl) inputEl.setSelectionRange(next, next);
+        pendingCursor = -1;
     }
 
     let wrapperEl: HTMLDivElement;
@@ -57,7 +70,16 @@
     function onFocus() {
         const rect = inputEl.getBoundingClientRect();
         dropdownStyle = { left: `${rect.left}px`, top: `${rect.bottom + 4}px` };
+        pendingCursor = -1;
         open = true;
+    }
+
+    function onBlur() {
+        // Commit the visible DOM value if the reactive update didn't propagate
+        const v = inputEl?.value?.trim() ?? '';
+        if (/^\d{2}:\d{2}$/.test(v) && v !== value) onChange(v);
+        pendingCursor = -1;
+        setTimeout(() => { open = false; }, 180);
     }
 
     function onWindowClick(e: MouseEvent) {
@@ -79,7 +101,7 @@
         class="time-input"
         onkeydown={onKeydown}
         onfocus={onFocus}
-        onblur={() => { setTimeout(() => { open = false; }, 180); }}
+        onblur={onBlur}
         readonly={false}
         style="background: var(--input-bg); border: 2px solid var(--input-border); color: var(--input-text);"
     >
