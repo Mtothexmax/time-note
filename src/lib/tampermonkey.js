@@ -651,6 +651,58 @@
     }
 
     // ------------------------------------------------------------------
+    // Read all entry rows for a given date from the ZEP calendar table.
+    // Returns an array of { dauer, bemerkung } objects, or null if the
+    // table isn't present on the page.
+    // ------------------------------------------------------------------
+    function getTableEntriesForDate(datum) {
+        const table = document.querySelector('table.htmltable');
+        if (!table) return null;
+        const result = [];
+        let currentDate = null;
+        const rows = table.querySelectorAll('tbody tr');
+        for (const tr of rows) {
+            // Day header rows contain the day cell — update tracked date
+            const dayCell = tr.querySelector('td[id^="day_"]');
+            if (dayCell) currentDate = dayCell.id.replace('day_', '');
+            if (currentDate !== datum) continue;
+            // Entry rows: pure "objectId\d+" id, no space/tag suffix, no summe class
+            if (!tr.id || !/^objectId\d+$/.test(tr.id)) continue;
+            const dauerTd = tr.querySelector('td[style*="text-align:right"]');
+            const bemSpan = tr.querySelector('td.col-bemerkung span');
+            result.push({
+                dauer:    dauerTd ? dauerTd.textContent.trim() : '',
+                bemerkung: bemSpan ? bemSpan.textContent.trim() : ''
+            });
+        }
+        return result;
+    }
+
+    // ------------------------------------------------------------------
+    // After import: verify that exactly the expected number of new entries
+    // appeared in the calendar table. Blocks Freigabe if they didn't.
+    // ------------------------------------------------------------------
+    async function verifyImportedEntries(datum, entries, preCount) {
+        LOG('[Verify] Warte auf Tabellenaktualisierung...');
+        await sleep(2000);
+        const after = getTableEntriesForDate(datum);
+        if (after === null) {
+            LOG('[Verify] Tabelle nicht gefunden – Verifikation übersprungen');
+            appendStatus(' · Tabelle nicht gefunden (Verifikation übersprungen)', 'error');
+            return false;
+        }
+        const added = after.length - preCount;
+        LOG('[Verify] vorher=' + preCount + ' nachher=' + after.length + ' importiert=' + entries.length + ' hinzugekommen=' + added);
+        if (added < entries.length) {
+            const missing = entries.length - added;
+            appendStatus(' · ⚠ ' + missing + ' Eintrag' + (missing > 1 ? 'äge' : '') + ' nicht in Tabelle sichtbar – bitte prüfen!', 'error');
+            return false;
+        }
+        appendStatus(' · ' + entries.length + ' Eintr. in Tabelle verifiziert ✓', 'success');
+        return true;
+    }
+
+    // ------------------------------------------------------------------
     // Main import loop — reads data from GM storage for current date
     // ------------------------------------------------------------------
     async function runImport() {
@@ -674,6 +726,7 @@
                 return;
             }
 
+            const preCount = (getTableEntriesForDate(datum) || []).length;
             const confirmed = await showPreviewDialog(data.Einträge, datum);
             if (!confirmed) return;
 
@@ -682,7 +735,13 @@
             if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
 
             const success = await importEntries(datum, data.Einträge);
-            if (success && confirmed.freigeben) await runFreigeben();
+            if (success) {
+                const verified = await verifyImportedEntries(datum, data.Einträge, preCount);
+                if (confirmed.freigeben) {
+                    if (verified) await runFreigeben();
+                    else appendStatus(' · Freigabe übersprungen (Einträge nicht verifiziert)', 'error');
+                }
+            }
         } finally {
             if (importBtn) importBtn.disabled = false;
         }
@@ -712,6 +771,7 @@
                 ? parsed.Einträge
                 : [parsed];
 
+            const preCount = (getTableEntriesForDate(datum) || []).length;
             const confirmed = await showPreviewDialog(entries, datum);
             if (!confirmed) return;
 
@@ -720,7 +780,13 @@
             if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#555'; }
 
             const success = await importEntries(datum, entries);
-            if (success && confirmed.freigeben) await runFreigeben();
+            if (success) {
+                const verified = await verifyImportedEntries(datum, entries, preCount);
+                if (confirmed.freigeben) {
+                    if (verified) await runFreigeben();
+                    else appendStatus(' · Freigabe übersprungen (Einträge nicht verifiziert)', 'error');
+                }
+            }
         } catch (err) {
             LOG('FEHLER Clipboard-Import:', err);
             setStatus('Fehler: ' + err.message, 'error');

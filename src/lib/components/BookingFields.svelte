@@ -131,14 +131,22 @@
     </div>
     <div></div>
     <div class="col-span-2">
-        <label
-            class="block text-[9px] font-bold uppercase mb-0.5"
-            style="color: var(--text-muted)">Bemerkung</label
-        >
+        <div class="flex justify-between items-baseline mb-0.5">
+            <label
+                class="block text-[9px] font-bold uppercase"
+                style="color: var(--text-muted)">Bemerkung</label
+            >
+            {#if parts[3].length >= 90}
+                <span class="text-[9px] font-bold tabular-nums" style="color: {parts[3].length >= 100 ? '#ef4444' : '#f59e0b'}">
+                    {parts[3].length}
+                </span>
+            {/if}
+        </div>
         <input
             type="text"
             value={parts[3]}
             oninput={(e) => set(3, (e.target as HTMLInputElement).value)}
+            onblur={() => onBlur(3)}
             placeholder="Bemerkung"
             class="w-full p-2 rounded-lg text-xs font-mono"
             style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text)"

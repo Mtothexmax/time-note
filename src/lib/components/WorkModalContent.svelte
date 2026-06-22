@@ -132,14 +132,16 @@
             result.push({ subject: m.subject, start: m.start, end: m.end, dur: em - sm, booking: m.booking || '', isPause: m.subject.toLowerCase().includes('pause') });
         });
         result.sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
-        return result.filter(ev => !!ev.booking);
+        return result.filter(ev => !!ev.booking || ev.isPause);
     });
 
-    const bookedTotal = $derived(dayEvents.reduce((s, e) => s + e.dur, 0));
+    const bookedTotal = $derived(dayEvents.filter(e => !!e.booking).reduce((s, e) => s + e.dur, 0));
+    const pauseTotal = $derived(dayEvents.filter(e => e.isPause).reduce((s, e) => s + e.dur, 0));
     const hasAnyEvent = $derived(dayEvents.length > 0);
     const totalPresenceMin = $derived(local.reduce((sum: number, w: WorkInterval) => sum + getDurationMin(w.start, w.end), 0));
+    const netPresenceMin = $derived(totalPresenceMin - pauseTotal);
     const durItemsTotal = $derived(durItems.reduce((s, d) => s + d.durationMin, 0));
-    const unbookedMin = $derived(Math.max(0, totalPresenceMin - bookedTotal - durItemsTotal));
+    const unbookedMin = $derived(Math.max(0, netPresenceMin - bookedTotal - durItemsTotal));
 
     // ─── Height equalisation ───
 
@@ -268,7 +270,7 @@
             <div onclick={() => { if (unbookedMin > 0) durItems = [...durItems, { durationMin: unbookedMin, booking: '' }]; }} class="p-3 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border); box-sizing: border-box; min-width: 0;" onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-indigo)'} onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = ''}>
                 <div class="text-[10px] font-bold uppercase mb-1" style="color: var(--text-muted)">Ungebuchte Zeit</div>
                 <div class="text-2xl font-bold" style="color: var(--text-indigo); line-height: 1.2;">{formatDur(unbookedMin)}</div>
-                <div class="text-[10px]" style="color: var(--text-muted);">/ {formatDur(totalPresenceMin)}</div>
+                <div class="text-[10px]" style="color: var(--text-muted);">/ {formatDur(netPresenceMin)}</div>
             </div>
 
             <!-- + Buchung button -->

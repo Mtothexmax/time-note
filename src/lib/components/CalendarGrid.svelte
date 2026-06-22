@@ -167,21 +167,25 @@
             const totalWorkMin = dayWorkData.reduce((s, w) => s + getDurationMin(w.start, w.end), 0);
             const totalDurMin = dayDurItems.reduce((s, d) => s + d.durationMin, 0);
             let totalBookedMeetingMin = 0;
+            let totalPauseMin = 0;
             calendarStore.events.forEach(ev => {
                 if (csvDateToISO(ev["Start Date"]) !== dStr) return;
+                if (isPause(ev.Subject)) { totalPauseMin += getDurationMin(ev["Start Time"], ev["End Time"]); return; }
                 const booking = calendarStore.bookings[ev.id] || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, ev.Subject);
                 if (booking) totalBookedMeetingMin += getDurationMin(ev["Start Time"], ev["End Time"]);
             });
             (calendarStore.manualMeetings[dStr] || []).forEach(m => {
+                if (isPause(m.subject)) { totalPauseMin += getDurationMin(m.start, m.end); return; }
                 if (m.booking || getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject)) totalBookedMeetingMin += getDurationMin(m.start, m.end);
             });
-            const fullyBooked = (totalDurMin + totalBookedMeetingMin) >= totalWorkMin;
+            const netWorkMin = totalWorkMin - totalPauseMin;
+            const fullyBooked = (totalDurMin + totalBookedMeetingMin) >= netWorkMin;
             dayWorkData.forEach((w, wi) => {
                 const id = `work-${dStr}-${wi}`;
                 const sm = toMinutes(w.start), em = toMinutes(w.end);
                 if (!isNaN(sm) && !isNaN(em)) {
                     slots.push({ id, startMin: sm, endMin: em });
-                    const unbookedMin = Math.max(0, totalWorkMin - totalDurMin - totalBookedMeetingMin);
+                    const unbookedMin = Math.max(0, netWorkMin - totalDurMin - totalBookedMeetingMin);
                     const isWorkBooked = unbookedMin === 0;
                     const wkStyle = isWorkBooked ? 'card-booked' : 'card-work';
                     const wkTitle = `ARBEIT: ${fullyBooked ? 'Gebucht' : '?'}`;
