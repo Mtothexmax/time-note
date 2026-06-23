@@ -684,22 +684,23 @@
     // ------------------------------------------------------------------
     async function verifyImportedEntries(datum, entries, preCount) {
         LOG('[Verify] Warte auf Tabellenaktualisierung...');
-        await sleep(2000);
-        const after = getTableEntriesForDate(datum);
-        if (after === null) {
-            LOG('[Verify] Tabelle nicht gefunden – Verifikation übersprungen');
-            appendStatus(' · Tabelle nicht gefunden (Verifikation übersprungen)', 'error');
-            return false;
+        const expected = preCount + entries.length;
+        const deadline = Date.now() + 12000;
+        while (Date.now() < deadline) {
+            await sleep(600);
+            const after = getTableEntriesForDate(datum);
+            if (after === null) continue;
+            LOG('[Verify] ' + after.length + '/' + expected + ' Einträge in Tabelle...');
+            if (after.length >= expected) {
+                appendStatus(' · ' + entries.length + ' Eintr. in Tabelle verifiziert ✓', 'success');
+                return true;
+            }
         }
-        const added = after.length - preCount;
-        LOG('[Verify] vorher=' + preCount + ' nachher=' + after.length + ' importiert=' + entries.length + ' hinzugekommen=' + added);
-        if (added < entries.length) {
-            const missing = entries.length - added;
-            appendStatus(' · ⚠ ' + missing + ' Eintrag' + (missing > 1 ? 'äge' : '') + ' nicht in Tabelle sichtbar – bitte prüfen!', 'error');
-            return false;
-        }
-        appendStatus(' · ' + entries.length + ' Eintr. in Tabelle verifiziert ✓', 'success');
-        return true;
+        const final = getTableEntriesForDate(datum);
+        const missing = expected - (final ? final.length : preCount);
+        LOG('[Verify] Timeout – vorher=' + preCount + ' erwartet=' + expected + ' gefunden=' + (final ? final.length : '?'));
+        appendStatus(' · ⚠ ' + missing + ' Eintrag' + (missing > 1 ? 'äge' : '') + ' nach 12s nicht in Tabelle – bitte prüfen!', 'error');
+        return false;
     }
 
     // ------------------------------------------------------------------
