@@ -270,12 +270,18 @@
     />
 </div>
 
-<Modal 
-    isOpen={meetingModal.isOpen} 
-    title={meetingModal.title} 
+<Modal
+    isOpen={meetingModal.isOpen}
+    title={meetingModal.title}
     titleValue={meetingModal.data.subject}
     onTitleChange={(v) => meetingModal.data.subject = v}
     onClose={() => meetingModal.isOpen = false}
+    dictEntries={Object.keys(calendarStore.bookingDict).map(k => ({ key: k, value: calendarStore.bookingDict[k] }))}
+    onSelectDictEntry={(key) => {
+        meetingModal.data.subject = key;
+        const booking = getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, key);
+        if (booking) meetingModal.data.booking = booking;
+    }}
 >
     <MeetingModalContent
         meetingData={meetingModal.data}
