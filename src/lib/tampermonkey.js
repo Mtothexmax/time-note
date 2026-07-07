@@ -363,7 +363,7 @@
         setFinalFields(augmented);
         await sleep(300);
         const saveWait = waitForSave(augmented.Bemerkung || '', 15000);
-        await sleep(300);
+        await sleep(1000);
         clickSpeichern();
         await saveWait;
     }

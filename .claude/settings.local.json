@@ -4,7 +4,16 @@
       "Bash(npx svelte-check *)",
       "Bash(npx vite *)",
       "Bash(npm run *)",
-      "Bash(xargs grep -l \"card-ooo\\\\|opacity.*0.3\")"
+      "Bash(xargs grep -l \"card-ooo\\\\|opacity.*0.3\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/ --max-time 3)",
+      "Bash(curl -s http://localhost:5173/ --max-time 3)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/ --max-time 5)",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "Bash(powershell -Command \"Stop-Process -Id 29988 -Force\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
