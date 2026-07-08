@@ -13,7 +13,8 @@
       "mcp__claude-in-chrome__tabs_context_mcp",
       "Bash(powershell -Command \"Stop-Process -Id 29988 -Force\")",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }

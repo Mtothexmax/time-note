@@ -3,6 +3,7 @@
     import { Trash2, Copy, ClipboardPaste, Scissors } from 'lucide-svelte';
     import TimePicker from './TimePicker.svelte';
     import DurationPicker from './DurationPicker.svelte';
+    import DurationDash from './DurationDash.svelte';
     import BookingFields from './BookingFields.svelte';
     import { getDurationMin, formatDur, toMinutes } from '$lib/utils/dateUtils';
     import { calendarStore, getDictBooking, type WorkInterval, type DurationItem } from '$lib/stores/calendarStore.svelte';
@@ -219,10 +220,11 @@
                 <div class="p-3 rounded-xl flex flex-col items-center" style="background: var(--modal-section-bg); border: 1px solid var(--modal-section-border); box-sizing: border-box; min-width: 0;">
                     <div class="flex items-center gap-1">
                         <TimePicker value={w.start} onChange={(v) => w.start = v} />
-                        <span style="color: var(--text-muted); font-size: 13px; font-weight: 600;">–</span>
                         {#if checkedIn && i === local.length - 1}
+                            <span style="color: var(--text-muted); font-size: 13px; font-weight: 600;">–</span>
                             <span class="text-xs font-bold px-2" style="color: var(--text-muted); opacity: 0.5;" title="Endzeit läuft noch">–:––</span>
                         {:else}
+                            <DurationDash start={w.start} end={w.end} onEndChange={(v) => w.end = v} />
                             <TimePicker value={w.end} onChange={(v) => w.end = v} minTime={w.start} />
                         {/if}
                         <button onclick={() => removeInterval(i)} class="ml-auto transition-colors" style="color: var(--text-muted)" title="Intervall entfernen">
