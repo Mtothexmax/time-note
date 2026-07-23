@@ -8,7 +8,7 @@
     import DictModalContent from '$lib/components/DictModalContent.svelte';
     import { onMount } from 'svelte';
     import { calendarStore, getDictBooking, type ManualMeeting, type CSVEvent, type WorkInterval } from '$lib/stores/calendarStore.svelte';
-    import { formatDate } from '$lib/utils/dateUtils';
+    import { formatDate, getRepeatDates } from '$lib/utils/dateUtils';
 
     onMount(() => {
         // Small delay ensures Tampermonkey's unsafeWindow listener is attached first
@@ -51,8 +51,8 @@
         };
     }
 
-    function openManualModal(dateStr: string, mId?: string, startTime?: string, endTime?: string) {
-        let data: ManualMeeting = { id: '', start: startTime || '09:00', end: endTime || '10:00', subject: '', booking: '' };
+    function openManualModal(dateStr: string, mId?: string, startTime?: string, endTime?: string, subject?: string) {
+        let data: ManualMeeting = { id: '', start: startTime || '09:00', end: endTime || '10:00', subject: subject || '', booking: '' };
         if (mId) {
             const m = calendarStore.manualMeetings[dateStr]?.find(x => x.id === mId);
             if (m) data = { ...m, booking: m.booking || '' };
@@ -85,7 +85,7 @@
                 id: data.id || 'm-' + Date.now(),
                 start: data.start,
                 end: data.end,
-                subject: data.subject || "Meeting",
+                subject: data.subject || "",
                 booking: data.booking.trim()
             };
             if (!calendarStore.manualMeetings[meetingModal.dateStr]) {
@@ -96,6 +96,21 @@
                 calendarStore.manualMeetings[meetingModal.dateStr][idx] = m;
             } else {
                 calendarStore.manualMeetings[meetingModal.dateStr].push(m);
+            }
+
+            if (!data.id && data.repeat) {
+                const repeatDates = getRepeatDates(meetingModal.dateStr, data.repeat.type, data.repeat.until);
+                repeatDates.forEach((dStr, i) => {
+                    if (!calendarStore.manualMeetings[dStr]) calendarStore.manualMeetings[dStr] = [];
+                    calendarStore.manualMeetings[dStr].push({
+                        id: `m-${Date.now()}-${i}`,
+                        start: m.start,
+                        end: m.end,
+                        subject: m.subject,
+                        booking: m.booking
+                    });
+                    calendarStore.dispatchDayEvent(dStr);
+                });
             }
         } else if (data.id) {
             const ev = calendarStore.events.find(e => e.id === data.id);
@@ -285,6 +300,7 @@
 >
     <MeetingModalContent
         meetingData={meetingModal.data}
+        dateStr={meetingModal.dateStr}
         onSave={saveMeeting}
         onDelete={deleteMeeting}
         onDeleteFuture={deleteFutureMeetings}

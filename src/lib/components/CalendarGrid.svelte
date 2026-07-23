@@ -4,12 +4,13 @@
     import { calendarStore, getDictBooking, type WorkInterval, type DurationItem } from '$lib/stores/calendarStore.svelte';
     import DayHeader from './DayHeader.svelte';
     import EventCard from './EventCard.svelte';
+    import { CalendarPlus, Coffee, PlaneTakeoff } from 'lucide-svelte';
     import { formatDate, diffDays, toMinutes, computeOverlaps, getDurationMin, stripSeconds, csvDateToISO } from '$lib/utils/dateUtils';
 
     let { onOpenMeeting, onOpenWork, onOpenManual, onOverlapMenu } = $props<{
         onOpenMeeting: (ev: any) => void;
         onOpenWork: (dateStr: string) => void;
-        onOpenManual: (dateStr: string, mId?: string, startTime?: string, endTime?: string) => void;
+        onOpenManual: (dateStr: string, mId?: string, startTime?: string, endTime?: string, subject?: string) => void;
         onOverlapMenu?: (events: any[], x: number, y: number) => void;
     }>();
 
@@ -114,6 +115,41 @@
         onOpenManual(dStr, undefined, startTime, endTime);
     }
 
+    let bgCtxMenu = $state<{ x: number; y: number; dateStr: string; startTime: string; endTime: string } | null>(null);
+
+    function onGridContextMenu(e: MouseEvent) {
+        const target = e.target as HTMLElement;
+        if (target.closest('.event-card-wrapper, .event-card, .day-header, .overlap-indicator, .overlap-menu, .overlap-backdrop')) return;
+        if (hoverCol < 0) return;
+        e.preventDefault();
+        const startTime = formatGridTime(hoverRow);
+        const endTime = formatGridTime(hoverRow + 2);
+        const dStr = formatDate(days[hoverCol]);
+        bgCtxMenu = { x: e.clientX, y: e.clientY, dateStr: dStr, startTime, endTime };
+    }
+
+    function closeBgCtxMenu() {
+        bgCtxMenu = null;
+    }
+
+    function insertMeeting() {
+        if (!bgCtxMenu) return;
+        onOpenManual(bgCtxMenu.dateStr, undefined, bgCtxMenu.startTime, bgCtxMenu.endTime);
+        closeBgCtxMenu();
+    }
+
+    function insertPause() {
+        if (!bgCtxMenu) return;
+        onOpenManual(bgCtxMenu.dateStr, undefined, bgCtxMenu.startTime, bgCtxMenu.endTime, 'Pause');
+        closeBgCtxMenu();
+    }
+
+    function insertOOO() {
+        if (!bgCtxMenu) return;
+        onOpenManual(bgCtxMenu.dateStr, undefined, bgCtxMenu.startTime, bgCtxMenu.endTime, 'Out of Office');
+        closeBgCtxMenu();
+    }
+
     onMount(() => {
         requestAnimationFrame(() => {
             if (!scrollContainer) return;
@@ -204,7 +240,8 @@
                     const manualDictBooking = getDictBooking(calendarStore.bookingDict, calendarStore.dictRegexFlags, m.subject);
                     const effectiveBooking = manualDictBooking || m.booking;
                     const style = isManualOOO ? 'card-ooo' : (isPause(m.subject) ? 'card-ooo' : (effectiveBooking ? 'card-booked' : 'card-manual'));
-                    eventMap.set(id, { start: m.start, end: m.end, title: m.subject, style, booking: effectiveBooking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } }, onDelete: () => { calendarStore.manualMeetings[dStr] = (calendarStore.manualMeetings[dStr] || []).filter(x => x.id !== m.id); calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
+                    const displayTitle = m.subject || (effectiveBooking || '').split(';')[3] || '';
+                    eventMap.set(id, { start: m.start, end: m.end, title: displayTitle, style, booking: effectiveBooking, onClick: () => onOpenManual(dStr, m.id), onBookingPaste: (b: string) => { const meet = calendarStore.manualMeetings[dStr]?.find(x => x.id === m.id); if (meet) { meet.booking = b; calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } }, onDelete: () => { calendarStore.manualMeetings[dStr] = (calendarStore.manualMeetings[dStr] || []).filter(x => x.id !== m.id); calendarStore.save(); calendarStore.dispatchDayEvent(dStr); } });
                 }
             });
 
@@ -281,10 +318,11 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div 
             bind:this={gridEl}
-            class="calendar-grid" 
+            class="calendar-grid"
             style="grid-template-columns: {colTemplate}"
             onpointermove={onGridPointerMove}
             onpointerleave={onGridPointerLeave}
+            oncontextmenu={onGridContextMenu}
         >
             <div class="grid-cell" style="background: var(--bg-header)"></div>
 
@@ -364,6 +402,44 @@
         </div>
     </div>
 </div>
+
+{#if bgCtxMenu}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 z-[9998]" onclick={closeBgCtxMenu} oncontextmenu={(e) => { e.preventDefault(); closeBgCtxMenu(); }}></div>
+    <div
+        class="fixed z-[9999] rounded-lg shadow-xl py-1 min-w-[180px]"
+        style="top: {bgCtxMenu.y}px; left: {bgCtxMenu.x}px; background: var(--bg-card); border: 1px solid var(--border-main);"
+    >
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={insertMeeting}
+        >
+            <CalendarPlus size={11} /> Meeting einfügen
+        </button>
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={insertPause}
+        >
+            <Coffee size={11} /> Pause einfügen
+        </button>
+        <button
+            class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-[11px] transition-colors"
+            style="color: var(--text-primary)"
+            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--nav-hover)'}
+            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            onclick={insertOOO}
+        >
+            <PlaneTakeoff size={11} /> Out of Office einfügen
+        </button>
+    </div>
+{/if}
 
 <style>
     .calendar-grid {

@@ -30,6 +30,35 @@ export function stripSeconds(time: string): string {
     return time.split(':').slice(0, 2).join(':');
 }
 
+export function addDays(dateStr: string, days: number): string {
+    return Temporal.PlainDate.from(dateStr).add({ days }).toString();
+}
+
+export function addMonths(dateStr: string, months: number): string {
+    return Temporal.PlainDate.from(dateStr).add({ months }).toString();
+}
+
+export function isoWeekday(dateStr: string): number {
+    return Temporal.PlainDate.from(dateStr).dayOfWeek; // 1 = Monday ... 7 = Sunday
+}
+
+export type RepeatType = 'weekdays' | 'daily' | 'weekly' | 'biweekly';
+
+// Dates after startDateStr (exclusive) up to untilDateStr (inclusive) matching the repeat pattern.
+export function getRepeatDates(startDateStr: string, type: RepeatType, untilDateStr: string): string[] {
+    const dates: string[] = [];
+    if (!untilDateStr || untilDateStr < startDateStr) return dates;
+    const step = type === 'biweekly' ? 14 : type === 'weekly' ? 7 : 1;
+    let cur = startDateStr;
+    for (let i = 0; i < 730; i++) {
+        cur = addDays(cur, step);
+        if (cur > untilDateStr) break;
+        if (type === 'weekdays' && (isoWeekday(cur) === 6 || isoWeekday(cur) === 7)) continue;
+        dates.push(cur);
+    }
+    return dates;
+}
+
 export function getGridRow(time: string): number {
     if (!time) return 0;
     const t = pt(time);
