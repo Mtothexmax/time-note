@@ -20,10 +20,27 @@
 
     let titleInput: HTMLInputElement | undefined = $state();
     let dictPickerOpen = $state(false);
+    let dictSearchInput: HTMLInputElement | undefined = $state();
+    let dictSearchQuery = $state('');
 
     $effect(() => {
         if (titleInput) titleInput.focus();
     });
+
+    $effect(() => {
+        if (dictPickerOpen && dictSearchInput) dictSearchInput.focus();
+    });
+
+    const filteredDictEntries = $derived.by(() => {
+        const q = dictSearchQuery.trim().toLowerCase();
+        if (!q) return dictEntries ?? [];
+        return (dictEntries ?? []).filter(e => e.key.toLowerCase().includes(q) || (e.value || '').toLowerCase().includes(q));
+    });
+
+    function openDictPicker() {
+        dictSearchQuery = '';
+        dictPickerOpen = true;
+    }
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Escape') {
@@ -73,7 +90,7 @@
                     <div class="flex items-center gap-1" style="min-width: 0; flex: 1; margin-right: 8px;">
                         <input bind:this={titleInput} type="text" value={titleValue ?? ''} oninput={(e) => onTitleChange((e.target as HTMLInputElement).value)} placeholder="Titel" class="w-full p-0 border-0 outline-none" style="background: transparent; color: var(--text-primary); font-size: 1.25rem; font-weight: 700;">
                         {#if dictEntries && dictEntries.length}
-                            <button type="button" onclick={() => dictPickerOpen = true} class="flex-shrink-0 rounded-lg transition-colors" style="color: var(--text-muted); padding: 4px;" title="Aus Wörterbuch wählen" onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'} onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'}>
+                            <button type="button" onclick={openDictPicker} class="flex-shrink-0 rounded-lg transition-colors" style="color: var(--text-muted); padding: 4px;" title="Aus Wörterbuch wählen" onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'} onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'}>
                                 <ChevronDown size={18} />
                             </button>
                         {/if}
@@ -122,22 +139,36 @@
                     <X size={24} />
                 </button>
             </div>
+            <div class="px-6 pb-4 flex-shrink-0">
+                <input
+                    bind:this={dictSearchInput}
+                    type="text"
+                    bind:value={dictSearchQuery}
+                    placeholder="Suchen…"
+                    class="w-full rounded-lg p-2.5 text-sm outline-none"
+                    style="background: var(--input-bg); border: 1px solid var(--input-border); color: var(--input-text);"
+                >
+            </div>
             <div class="overflow-y-auto px-6 pb-6 flex-1">
-                <div class="dict-picker-grid">
-                    {#each dictEntries as entry}
-                        <button type="button" class="dict-picker-card" onclick={() => pickDictEntry(entry.key)}>
-                            <div class="dict-picker-card-title">{entry.key}</div>
-                            {#each bookingParts(entry.value) as part}
-                                {#if part.text}
-                                    <div class="dict-picker-card-row">
-                                        <span class="dict-picker-card-label">{part.label}</span>
-                                        <span class="dict-picker-card-value">{part.text}</span>
-                                    </div>
-                                {/if}
-                            {/each}
-                        </button>
-                    {/each}
-                </div>
+                {#if filteredDictEntries.length}
+                    <div class="dict-picker-grid">
+                        {#each filteredDictEntries as entry}
+                            <button type="button" class="dict-picker-card" onclick={() => pickDictEntry(entry.key)}>
+                                <div class="dict-picker-card-title">{entry.key}</div>
+                                {#each bookingParts(entry.value) as part}
+                                    {#if part.text}
+                                        <div class="dict-picker-card-row">
+                                            <span class="dict-picker-card-label">{part.label}</span>
+                                            <span class="dict-picker-card-value">{part.text}</span>
+                                        </div>
+                                    {/if}
+                                {/each}
+                            </button>
+                        {/each}
+                    </div>
+                {:else}
+                    <div class="text-sm" style="color: var(--text-muted)">Keine Treffer</div>
+                {/if}
             </div>
         </div>
     </div>
