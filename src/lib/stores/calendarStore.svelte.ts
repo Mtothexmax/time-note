@@ -200,6 +200,15 @@ class CalendarStore {
         return getDictBooking(this.bookingDict, this.dictRegexFlags, subject);
     }
 
+    getBookingHistory(): string[] {
+        const set = new Set<string>();
+        Object.values(this.bookings).forEach(b => { if (b && b.trim()) set.add(b.trim()); });
+        Object.values(this.manualMeetings).forEach(list => list.forEach(m => { if (m.booking && m.booking.trim()) set.add(m.booking.trim()); }));
+        Object.values(this.workData).forEach(list => list.forEach(w => { if (w.booking && w.booking.trim()) set.add(w.booking.trim()); }));
+        Object.values(this.workDurationItems).forEach(list => list.forEach(d => { if (d.booking && d.booking.trim()) set.add(d.booking.trim()); }));
+        return Array.from(set);
+    }
+
     buildDayJSON(dateStr: string): { Datum: string; Einträge: { Dauer: string; Projekt: string; Vorgang: string; Tätigkeit: string; Bemerkung: string }[] } {
         const workIntervals = this.workData[dateStr] || [];
         const totalWorkMin  = workIntervals.reduce((acc, w) => acc + getDurationMin(w.start, w.end), 0);

@@ -2,6 +2,7 @@
 <script lang="ts">
     import { Copy, ClipboardPaste, MoreHorizontal, BookPlus, Repeat, ChevronRight, ChevronLeft } from 'lucide-svelte';
     import TimeEntry from './TimeEntry.svelte';
+    import BookingHistoryPicker from './BookingHistoryPicker.svelte';
     import { calendarStore } from '$lib/stores/calendarStore.svelte';
     import { getDurationMin, formatDur, addMonths, type RepeatType } from '$lib/utils/dateUtils';
 
@@ -157,6 +158,7 @@
         <button onclick={openMoreMenu} class="p-3 rounded-xl transition-colors" title="Weitere Optionen" style="color: var(--text-muted); background: var(--bg-cell); border: 1px solid var(--border-main)">
             <MoreHorizontal size={14} />
         </button>
+        <BookingHistoryPicker onSelect={(b) => localData.booking = b} iconSize={14} />
         <button onclick={copyBooking} class="p-3 rounded-xl transition-colors" title="Buchung kopieren" style="color: var(--text-muted); background: var(--bg-cell); border: 1px solid var(--border-main)">
             <Copy size={14} />
         </button>

@@ -5,6 +5,7 @@
     import DurationPicker from './DurationPicker.svelte';
     import DurationDash from './DurationDash.svelte';
     import BookingFields from './BookingFields.svelte';
+    import BookingHistoryPicker from './BookingHistoryPicker.svelte';
     import { getDurationMin, formatDur, toMinutes } from '$lib/utils/dateUtils';
     import { calendarStore, getDictBooking, type WorkInterval, type DurationItem } from '$lib/stores/calendarStore.svelte';
 
@@ -305,6 +306,7 @@
                         <BookingFields value={d.booking} onChange={(v) => d.booking = v} />
                     </div>
                     <div class="flex justify-end gap-1 mt-2">
+                        <BookingHistoryPicker onSelect={(b) => d.booking = b} buttonClass="p-1 rounded transition-colors" buttonStyle="color: var(--text-muted)" iconSize={11} />
                         <button onclick={() => { copyCardDuration(d.durationMin, d.booking); }} class="p-1 rounded transition-colors" style="color: var(--text-muted)" title="Als JSON kopieren">
                             <Copy size={11} />
                         </button>

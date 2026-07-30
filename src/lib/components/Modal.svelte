@@ -2,6 +2,7 @@
 <script lang="ts">
     import { X, ChevronDown } from 'lucide-svelte';
     import { fade, scale } from 'svelte/transition';
+    import { highlightParts } from '$lib/utils/highlight';
 
     import type { Snippet } from 'svelte';
 
@@ -154,12 +155,20 @@
                     <div class="dict-picker-grid">
                         {#each filteredDictEntries as entry}
                             <button type="button" class="dict-picker-card" onclick={() => pickDictEntry(entry.key)}>
-                                <div class="dict-picker-card-title">{entry.key}</div>
+                                <div class="dict-picker-card-title">
+                                    {#each highlightParts(entry.key, dictSearchQuery) as seg}
+                                        {#if seg.match}<mark class="hl-mark">{seg.text}</mark>{:else}{seg.text}{/if}
+                                    {/each}
+                                </div>
                                 {#each bookingParts(entry.value) as part}
                                     {#if part.text}
                                         <div class="dict-picker-card-row">
                                             <span class="dict-picker-card-label">{part.label}</span>
-                                            <span class="dict-picker-card-value">{part.text}</span>
+                                            <span class="dict-picker-card-value">
+                                                {#each highlightParts(part.text, dictSearchQuery) as seg}
+                                                    {#if seg.match}<mark class="hl-mark">{seg.text}</mark>{:else}{seg.text}{/if}
+                                                {/each}
+                                            </span>
                                         </div>
                                     {/if}
                                 {/each}
@@ -216,5 +225,12 @@
     }
     .dict-picker-card-value {
         color: var(--text-secondary);
+    }
+    .hl-mark {
+        background: var(--text-indigo);
+        color: white;
+        border-radius: 3px;
+        padding: 0 2px;
+        font-weight: 700;
     }
 </style>
