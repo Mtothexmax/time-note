@@ -121,9 +121,17 @@
             : [...selectEl.options].find(o => o.text.trim() === t);
         if (!opt) return false;
         selectEl.value = opt.value;
-        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-        if (typeof selectEl.onchange === 'function') {
-            selectEl.onchange.call(selectEl);
+        // ZEP's own onchange (e.g. vorgangChanged → setFakturierbarkeit) can throw for
+        // options missing certain config (observed: null.split on Vorgänge without
+        // Fakturierbarkeit data). The value is already set at this point, so a throw
+        // here is cosmetic on ZEP's side, not a failed selection — don't abort on it.
+        try {
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+            if (typeof selectEl.onchange === 'function') {
+                selectEl.onchange.call(selectEl);
+            }
+        } catch (err) {
+            LOG('WARN: ZEP onchange-Handler warf einen Fehler (ignoriert):', err);
         }
         return true;
     }
@@ -196,6 +204,7 @@
                     LOG('formularmessagediv:', txt);
                     if (div.querySelector('.alert-danger, .text-danger') ||
                         txt.toLowerCase().includes('fehler') ||
+                        txt.toLowerCase().includes('fehlgeschlagen') ||
                         txt.toLowerCase().includes('error')) {
                         finish(new Error('ZEP: ' + txt.substring(0, 250)));
                     } else {
@@ -379,6 +388,7 @@
             if (el) {
                 el.value = eintrag.Bemerkung;
                 el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
     }
@@ -685,7 +695,7 @@
     async function verifyImportedEntries(datum, entries, preCount) {
         LOG('[Verify] Warte auf Tabellenaktualisierung...');
         const expected = preCount + entries.length;
-        const deadline = Date.now() + 12000;
+        const deadline = Date.now() + 25000;
         while (Date.now() < deadline) {
             await sleep(600);
             const after = getTableEntriesForDate(datum);
@@ -704,9 +714,19 @@
     }
 
     // ------------------------------------------------------------------
+    // Import concurrency guard. ZEP repeatedly wipes and re-injects our
+    // buttons (see injectButton/setupInjector below), so a stale
+    // `btn.disabled = true` reference doesn't stop a second click from
+    // starting a second, overlapping import — this in-memory flag does.
+    // ------------------------------------------------------------------
+    let importInProgress = false;
+
+    // ------------------------------------------------------------------
     // Main import loop — reads data from GM storage for current date
     // ------------------------------------------------------------------
     async function runImport() {
+        if (importInProgress) { LOG('Import läuft bereits, Klick ignoriert.'); return; }
+        importInProgress = true;
         LOG('Import gestartet');
         const importBtn = document.getElementById('tn-import-btn');
         if (importBtn) importBtn.disabled = true;
@@ -744,6 +764,7 @@
                 }
             }
         } finally {
+            importInProgress = false;
             if (importBtn) importBtn.disabled = false;
         }
     }
@@ -752,6 +773,8 @@
     // Clipboard import — reads a single JSON entry or full day export
     // ------------------------------------------------------------------
     async function runClipboardImport() {
+        if (importInProgress) { LOG('Import läuft bereits, Klick ignoriert.'); return; }
+        importInProgress = true;
         LOG('Clipboard-Import gestartet');
         const clipBtn = document.getElementById('tn-clipboard-btn');
         if (clipBtn) clipBtn.disabled = true;
@@ -792,6 +815,7 @@
             LOG('FEHLER Clipboard-Import:', err);
             setStatus('Fehler: ' + err.message, 'error');
         } finally {
+            importInProgress = false;
             if (clipBtn) clipBtn.disabled = false;
         }
     }
@@ -817,6 +841,7 @@
                 btn.style.opacity = '0.6';
                 btn.title = 'Keine Time-Note-Daten für dieses Datum vorhanden';
             }
+            btn.disabled = importInProgress;
             btn.addEventListener('click', runImport);
             saveBtn.parentElement.appendChild(btn);
             LOG('Import-Button eingefügt.');
@@ -830,6 +855,7 @@
             btn2.className = 'btn btn-secondary';
             btn2.style.marginLeft = '0.5rem';
             btn2.title = 'Einzelnen Eintrag aus JSON-Zwischenablage importieren';
+            btn2.disabled = importInProgress;
             btn2.addEventListener('click', runClipboardImport);
             saveBtn.parentElement.appendChild(btn2);
             LOG('Clipboard-Button eingefügt.');

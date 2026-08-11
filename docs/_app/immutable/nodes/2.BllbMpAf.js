@@ -126,9 +126,17 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
             : [...selectEl.options].find(o => o.text.trim() === t);\r
         if (!opt) return false;\r
         selectEl.value = opt.value;\r
-        selectEl.dispatchEvent(new Event('change', { bubbles: true }));\r
-        if (typeof selectEl.onchange === 'function') {\r
-            selectEl.onchange.call(selectEl);\r
+        // ZEP's own onchange (e.g. vorgangChanged → setFakturierbarkeit) can throw for\r
+        // options missing certain config (observed: null.split on Vorgänge without\r
+        // Fakturierbarkeit data). The value is already set at this point, so a throw\r
+        // here is cosmetic on ZEP's side, not a failed selection — don't abort on it.\r
+        try {\r
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));\r
+            if (typeof selectEl.onchange === 'function') {\r
+                selectEl.onchange.call(selectEl);\r
+            }\r
+        } catch (err) {\r
+            LOG('WARN: ZEP onchange-Handler warf einen Fehler (ignoriert):', err);\r
         }\r
         return true;\r
     }\r
@@ -201,6 +209,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
                     LOG('formularmessagediv:', txt);\r
                     if (div.querySelector('.alert-danger, .text-danger') ||\r
                         txt.toLowerCase().includes('fehler') ||\r
+                        txt.toLowerCase().includes('fehlgeschlagen') ||\r
                         txt.toLowerCase().includes('error')) {\r
                         finish(new Error('ZEP: ' + txt.substring(0, 250)));\r
                     } else {\r
@@ -384,6 +393,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
             if (el) {\r
                 el.value = eintrag.Bemerkung;\r
                 el.dispatchEvent(new Event('input', { bubbles: true }));\r
+                el.dispatchEvent(new Event('change', { bubbles: true }));\r
             }\r
         }\r
     }\r
@@ -690,7 +700,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     async function verifyImportedEntries(datum, entries, preCount) {\r
         LOG('[Verify] Warte auf Tabellenaktualisierung...');\r
         const expected = preCount + entries.length;\r
-        const deadline = Date.now() + 12000;\r
+        const deadline = Date.now() + 25000;\r
         while (Date.now() < deadline) {\r
             await sleep(600);\r
             const after = getTableEntriesForDate(datum);\r
@@ -709,9 +719,19 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     }\r
 \r
     // ------------------------------------------------------------------\r
+    // Import concurrency guard. ZEP repeatedly wipes and re-injects our\r
+    // buttons (see injectButton/setupInjector below), so a stale\r
+    // \`btn.disabled = true\` reference doesn't stop a second click from\r
+    // starting a second, overlapping import — this in-memory flag does.\r
+    // ------------------------------------------------------------------\r
+    let importInProgress = false;\r
+\r
+    // ------------------------------------------------------------------\r
     // Main import loop — reads data from GM storage for current date\r
     // ------------------------------------------------------------------\r
     async function runImport() {\r
+        if (importInProgress) { LOG('Import läuft bereits, Klick ignoriert.'); return; }\r
+        importInProgress = true;\r
         LOG('Import gestartet');\r
         const importBtn = document.getElementById('tn-import-btn');\r
         if (importBtn) importBtn.disabled = true;\r
@@ -749,6 +769,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
                 }\r
             }\r
         } finally {\r
+            importInProgress = false;\r
             if (importBtn) importBtn.disabled = false;\r
         }\r
     }\r
@@ -757,6 +778,8 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     // Clipboard import — reads a single JSON entry or full day export\r
     // ------------------------------------------------------------------\r
     async function runClipboardImport() {\r
+        if (importInProgress) { LOG('Import läuft bereits, Klick ignoriert.'); return; }\r
+        importInProgress = true;\r
         LOG('Clipboard-Import gestartet');\r
         const clipBtn = document.getElementById('tn-clipboard-btn');\r
         if (clipBtn) clipBtn.disabled = true;\r
@@ -797,6 +820,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
             LOG('FEHLER Clipboard-Import:', err);\r
             setStatus('Fehler: ' + err.message, 'error');\r
         } finally {\r
+            importInProgress = false;\r
             if (clipBtn) clipBtn.disabled = false;\r
         }\r
     }\r
@@ -822,6 +846,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
                 btn.style.opacity = '0.6';\r
                 btn.title = 'Keine Time-Note-Daten für dieses Datum vorhanden';\r
             }\r
+            btn.disabled = importInProgress;\r
             btn.addEventListener('click', runImport);\r
             saveBtn.parentElement.appendChild(btn);\r
             LOG('Import-Button eingefügt.');\r
@@ -835,6 +860,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
             btn2.className = 'btn btn-secondary';\r
             btn2.style.marginLeft = '0.5rem';\r
             btn2.title = 'Einzelnen Eintrag aus JSON-Zwischenablage importieren';\r
+            btn2.disabled = importInProgress;\r
             btn2.addEventListener('click', runClipboardImport);\r
             saveBtn.parentElement.appendChild(btn2);\r
             LOG('Clipboard-Button eingefügt.');\r
